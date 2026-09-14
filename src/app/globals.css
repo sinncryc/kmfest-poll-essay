@@ -1111,105 +1111,25 @@ body {
   pointer-events: none;
 }
 
-.river-lane {
+/* Invisible — exists only so its rendered size resolves --river-x/--river-y
+   (both clamp()s against the viewport) to real pixels the path math can use. */
+.river-probe {
   position: absolute;
-  overflow: hidden;
-  box-sizing: border-box;
+  visibility: hidden;
+  width: 0;
+  height: 0;
 }
 
-.river-track,
+/* Every card shares one motion path (computed in JS from the ring's measured
+   size), so the whole ring is a single continuous clockwise loop with real
+   corners — not four lanes that stop dead at the edge of their own track. */
 .river-card {
-  box-sizing: border-box;
-}
-
-.river-lane-top,
-.river-lane-bottom {
-  left: 0;
-  right: 0;
-  height: var(--river-y);
-  /* Fade each end so cards dissolve into the corners instead of clipping. */
-  mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
-}
-
-.river-lane-top {
+  position: absolute;
   top: 0;
-}
-
-.river-lane-bottom {
-  bottom: 0;
-}
-
-.river-lane-left,
-.river-lane-right {
-  top: var(--river-y);
-  bottom: var(--river-y);
-  width: var(--river-x);
-  mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-}
-
-.river-lane-left {
   left: 0;
-}
-
-.river-lane-right {
-  right: 0;
-}
-
-.river-track {
-  display: flex;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  will-change: transform;
-}
-
-.river-track-x {
-  flex-direction: row;
-  align-items: center;
-  width: max-content;
-  height: 100%;
-  gap: clamp(0.5rem, 1.1vw, 1.2rem);
-  padding-inline: clamp(0.5rem, 1.1vw, 1.2rem);
-  animation-name: river-x;
-}
-
-.river-track-y {
-  flex-direction: column;
-  height: max-content;
-  width: 100%;
-  gap: clamp(0.4rem, 0.9vh, 0.9rem);
-  padding-block: clamp(0.4rem, 0.9vh, 0.9rem);
-  padding-inline: clamp(0.4rem, 0.8vw, 0.9rem);
-  animation-name: river-y;
-}
-
-/* Each lane renders its items twice, so translating by exactly half the
-   track length lands the second copy where the first began — a seamless
-   loop with no gap and no possibility of two cards overlapping. */
-@keyframes river-x {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
-@keyframes river-y {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(0, -50%, 0);
-  }
-}
-
-.river-card {
-  position: relative;
-  isolation: isolate;
+  box-sizing: border-box;
   margin: 0;
-  flex: none;
+  isolation: isolate;
   border-radius: 999px;
   border: 1px solid var(--kv-line-soft);
   background: rgba(6, 40, 86, 0.5);
@@ -1219,23 +1139,25 @@ body {
   font-size: clamp(0.55rem, 0.75vw, 0.9rem);
   line-height: 1.35;
   color: #dceeff;
-}
-
-.river-track-x .river-card {
-  max-width: clamp(14rem, 24vw, 30rem);
+  /* One shape has to work on both the thin top/bottom band and the wide
+     left/right band, since the same card travels through both — capped
+     narrow enough to clear the tighter of the two. */
+  max-width: clamp(7rem, 11vw, 13rem);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  animation-name: ring-loop;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
 }
 
-.river-track-y .river-card {
-  border-radius: clamp(0.6rem, 1vw, 1.1rem);
-  padding: clamp(0.4rem, 0.75vw, 0.8rem) clamp(0.5rem, 0.9vw, 0.95rem);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+@keyframes ring-loop {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
 }
 
 /* A just-arrived answer gets the spinning ring — the same conic-gradient +
@@ -1295,7 +1217,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .constellation-field,
-  .river-track,
+  .river-card,
   .river-card.is-fresh::after,
   .live-dot,
   .fade-up,
