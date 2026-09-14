@@ -12,8 +12,98 @@ export const dynamic = "force-dynamic";
 // Vercel's short default.
 export const maxDuration = 60;
 
-const GEMINI_MODEL = "gemini-flash-latest"; // always the current default Flash model
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+/**
+ * Tried in order. The free tier's headline Flash model is the one everyone
+ * else is hammering too, so when it answers 503 "high demand" the cheapest
+ * fix is not to wait — it is to ask a less contended model. The Lite models
+ * are more than capable of clustering a few hundred short answers.
+ *
+ * Override with GEMINI_MODELS (comma separated) if Google renames things,
+ * so a model rename never needs a code change on event day.
+ */
+const DEFAULT_MODELS = [
+  "gemini-flash-latest",
+  "gemini-3.5-flash-lite",
+  "gemini-2.5-flash-lite",
+];
+
+const MODELS = (process.env.GEMINI_MODELS?.trim() || DEFAULT_MODELS.join(","))
+  .split(",")
+  .map((name) => name.trim())
+  .filter(Boolean);
+
+/** Worth a second go; anything else means this model will not work at all. */
+const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
+const ATTEMPTS_PER_MODEL = 2;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function modelUrl(model: string, apiKey: string): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+}
+
+type GeminiAttempt =
+  | { ok: true; data: GeminiResponse; model: string; tried: string[] }
+  | { ok: false; status: number; detail: string; tried: string[] };
+
+/**
+ * Calls Gemini, retrying transient failures and falling back across models.
+ *
+ * Deliberately modest: the scheduler comes back every 5 minutes anyway, so
+ * this only needs to outlast a short spike, not guarantee an answer. Two
+ * attempts per model across three models fits well inside `maxDuration`.
+ */
+async function askGemini(prompt: string, apiKey: string): Promise<GeminiAttempt> {
+  const tried: string[] = [];
+  let last: { status: number; detail: string } = {
+    status: 503,
+    detail: "No Gemini model was reachable.",
+  };
+
+  for (const model of MODELS) {
+    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt += 1) {
+      let response: Response;
+      try {
+        response = await fetch(modelUrl(model, apiKey), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" },
+          }),
+        });
+      } catch (error) {
+        tried.push(`${model}#${attempt} network-error`);
+        last = {
+          status: 503,
+          detail: error instanceof Error ? error.message : "network error",
+        };
+        if (attempt < ATTEMPTS_PER_MODEL) await sleep(900);
+        continue;
+      }
+
+      if (response.ok) {
+        tried.push(`${model}#${attempt} ok`);
+        return { ok: true, data: (await response.json()) as GeminiResponse, model, tried };
+      }
+
+      const detail = await response.text().catch(() => "");
+      tried.push(`${model}#${attempt} ${response.status}`);
+      last = { status: response.status, detail };
+
+      // A rejected key will be rejected by every model — stop immediately so
+      // the cron log says "fix the key" instead of burning six requests.
+      if (response.status === 401 || response.status === 403) {
+        return { ok: false, status: response.status, detail, tried };
+      }
+
+      if (!TRANSIENT_STATUSES.has(response.status)) break; // try the next model
+      if (attempt < ATTEMPTS_PER_MODEL) await sleep(900 * attempt);
+    }
+  }
+
+  return { ok: false, status: last.status, detail: last.detail, tried };
+}
 
 function extractSecret(request: NextRequest): string | null {
   const auth = request.headers.get("authorization");
@@ -87,28 +177,28 @@ export async function GET(request: NextRequest) {
         })),
     };
 
-    const geminiResponse = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildAiPrompt(payload) }] }],
-        generationConfig: { responseMimeType: "application/json" },
-      }),
-    });
+    const attempt = await askGemini(buildAiPrompt(payload), apiKey);
 
-    if (!geminiResponse.ok) {
-      const detail = await geminiResponse.text().catch(() => "");
-      console.error("[cron/auto-summarize] Gemini HTTP error", geminiResponse.status, detail);
+    if (!attempt.ok) {
+      console.error(
+        "[cron/auto-summarize] Gemini unreachable",
+        attempt.status,
+        attempt.tried.join(" → "),
+        attempt.detail,
+      );
       return NextResponse.json(
-        { error: `Gemini API error ${geminiResponse.status}`, detail },
+        {
+          error: `Gemini API error ${attempt.status}`,
+          tried: attempt.tried,
+          detail: attempt.detail,
+        },
         { status: 502 },
       );
     }
 
-    const data = (await geminiResponse.json()) as GeminiResponse;
-    const text = extractText(data);
+    const text = extractText(attempt.data);
     if (!text) {
-      console.error("[cron/auto-summarize] empty Gemini response", JSON.stringify(data));
+      console.error("[cron/auto-summarize] empty Gemini response", JSON.stringify(attempt.data));
       return NextResponse.json({ error: "Gemini tidak mengembalikan teks." }, { status: 502 });
     }
 
@@ -127,7 +217,13 @@ export async function GET(request: NextRequest) {
     }
 
     const updatedAt = await setConcerns(result.value.concerns);
-    return NextResponse.json({ ok: true, updatedAt, totalResponses: total });
+    return NextResponse.json({
+      ok: true,
+      updatedAt,
+      totalResponses: total,
+      model: attempt.model,
+      tried: attempt.tried,
+    });
   } catch (error) {
     console.error("[cron/auto-summarize] failed", error);
     const message = error instanceof Error ? error.message : "Gagal auto-summarize.";
