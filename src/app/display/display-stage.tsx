@@ -41,13 +41,19 @@ export default function DisplayStage() {
   const [showDebug, setShowDebug] = useState(false);
 
   /**
-   * The three newest answers, shown verbatim beside the AI's clustering.
+   * Newest answers first, shown verbatim beside the AI's clustering.
+   *
    * Sorted by id rather than trusting the pool's order: the pool is seeded
    * oldest-first from the snapshot but prepends live arrivals, so slicing it
-   * raw showed the three *oldest* answers until someone submitted again.
+   * raw showed the *oldest* answers until someone submitted again.
+   *
+   * This is a candidate list, not the number that appears — how many fit
+   * depends on how long the answers are, so the panel itself drops the ones
+   * that would overflow. Sending a few more than could ever fit means a
+   * column of one-line answers fills right down to the bottom.
    */
   const quotes = useMemo(
-    () => [...pool].sort((a, b) => b.id - a.id).slice(0, 3),
+    () => [...pool].sort((a, b) => b.id - a.id).slice(0, 16),
     [pool],
   );
 

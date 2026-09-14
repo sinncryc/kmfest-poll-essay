@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { eventConfig } from "@/lib/event-config";
 import type { ConcernItem, PollResults } from "@/lib/types";
 import type { RiverSource } from "./use-display-data";
@@ -97,6 +98,65 @@ export function ConcernsPanel({
   const summed = concerns.reduce((sum, item) => sum + item.count, 0);
   const base = summed > 0 ? summed : total;
 
+  const stackRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Fill the quotes column to the bottom rather than showing a fixed number.
+   *
+   * How many answers fit depends entirely on how long they are — four
+   * one-liners take the room of one rambling paragraph — so the count can
+   * only be decided from the rendered heights. The panel is handed more
+   * candidates than could ever fit and hides the ones that would overflow,
+   * which is what keeps the last visible card whole instead of sliced off
+   * by the panel edge.
+   *
+   * Hiding only ever affects cards *below* the cut, so the layout above it
+   * never moves: one pass settles, with no risk of a measure/hide loop. The
+   * stack is `flex: 1` inside a fixed-height panel, so hiding cards cannot
+   * change its own height either — the observer won't re-fire itself.
+   */
+  useEffect(() => {
+    const stack = stackRef.current;
+    if (!stack) return;
+    let cancelled = false;
+
+    const fit = () => {
+      if (cancelled) return;
+      const cards = Array.from(stack.children).filter(
+        (node): node is HTMLElement => node instanceof HTMLElement,
+      );
+
+      // Clean slate first: a card dropped on an earlier pass has to be able
+      // to come back when the answers above it are shorter, or the window
+      // (and so the panel) grows.
+      for (const card of cards) card.hidden = false;
+
+      const limit = stack.getBoundingClientRect().bottom;
+      let overflowing = false;
+      for (const card of cards) {
+        if (!overflowing && card.getBoundingClientRect().bottom > limit + 1) {
+          // 1px of slack — sub-pixel layout shouldn't drop a card that fits.
+          overflowing = true;
+        }
+        if (overflowing) card.hidden = true;
+      }
+    };
+
+    fit();
+
+    // Webfonts land after first paint and change every card's height.
+    if (typeof document !== "undefined" && document.fonts) {
+      void document.fonts.ready.then(fit);
+    }
+
+    const observer = new ResizeObserver(fit);
+    observer.observe(stack);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [quotes]);
+
   return (
     <section className="panel panel-wide" aria-labelledby="essay-title">
       <header className="panel-head">
@@ -143,7 +203,7 @@ export function ConcernsPanel({
 
         <aside className="essay-quotes">
           <h3 className="quotes-heading">{displayCopy.quotesHeading}</h3>
-          <div className="quotes-stack">
+          <div className="quotes-stack" ref={stackRef}>
             {quotes.length === 0 ? (
               <p className="panel-waiting">No answers yet.</p>
             ) : (

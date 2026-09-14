@@ -647,6 +647,10 @@ body {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  /* Pin the row to the container. An implicit `auto` row is sized by its
+     content, so a panel with more in it than fits would quietly push the
+     whole stage taller instead of staying inside its own box. */
+  grid-template-rows: minmax(0, 1fr);
   gap: clamp(0.7rem, 1.6vw, 1.5rem);
 }
 
@@ -935,6 +939,7 @@ body {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.46fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: clamp(0.6rem, 1.2vw, 1.4rem);
 }
 
@@ -943,6 +948,10 @@ body {
   flex-direction: column;
   gap: clamp(0.35rem, 0.9vh, 0.7rem);
   min-width: 0;
+  /* Grid items default to min-height:auto, i.e. "never smaller than my
+     content" — which is how a long column of answers could stretch the
+     panel rather than being clipped inside it. */
+  min-height: 0;
 }
 
 .concern-list {
@@ -1048,6 +1057,7 @@ body {
   flex-direction: column;
   gap: clamp(0.35rem, 0.9vh, 0.7rem);
   min-width: 0;
+  min-height: 0;
   border-left: 1px solid var(--kv-line-soft);
   padding-left: clamp(0.5rem, 1.1vw, 1.2rem);
 }
@@ -1067,12 +1077,21 @@ body {
   flex-direction: column;
   gap: clamp(0.35rem, 0.9vh, 0.7rem);
   min-height: 0;
+  /* The panel is handed more answers than fit and hides the overflow once
+     measured; this keeps anything it hasn't got to yet inside the panel. */
+  overflow: hidden;
 }
 
+.quote-card[hidden] {
+  display: none;
+}
 
 .quote-card {
   position: relative;
   margin: 0;
+  /* Natural height, never squeezed: the column is filled by dropping whole
+     cards, not by compressing every card until the text is unreadable. */
+  flex: none;
   border-radius: clamp(0.5rem, 0.85vw, 0.95rem);
   border: 1px solid var(--kv-line-soft);
   background: rgba(9, 56, 116, 0.42);
