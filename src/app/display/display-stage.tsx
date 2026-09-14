@@ -34,9 +34,18 @@ export default function DisplayStage() {
   } = useDisplayData();
 
   const [controlsVisible, setControlsVisible] = useState(true);
+  // The connection badge isn't part of the approved key visual — it's an
+  // operator aid for confirming realtime is actually live before doors open.
+  // Hidden by default so the public screen matches the mockup exactly; add
+  // ?debug=1 to the URL during setup/rehearsal to see it.
+  const [showDebug, setShowDebug] = useState(false);
 
   /** The three newest answers, shown verbatim beside the AI's clustering. */
   const quotes = useMemo(() => pool.slice(0, 3), [pool]);
+
+  useEffect(() => {
+    setShowDebug(new URLSearchParams(window.location.search).has("debug"));
+  }, []);
 
   // Controls fade away so the screen needs no operator during the event.
   useEffect(() => {
@@ -95,29 +104,31 @@ export default function DisplayStage() {
         </footer>
       </div>
 
-      {/* Status corner */}
-      <div className="stage-status">
-        <span
-          className={`live-dot ${
-            connection === "live"
-              ? "bg-emerald-400"
-              : connection === "polling"
-                ? "bg-azure-400"
-                : connection === "error"
-                  ? "bg-red-400"
-                  : "bg-slate-300"
-          }`}
-        />
-        {connection === "live"
-          ? "LIVE"
-          : connection === "polling"
-            ? demoMode
-              ? "DEMO"
-              : "POLLING"
-            : connection === "error"
-              ? "RECONNECTING"
-              : "CONNECTING"}
-      </div>
+      {/* Status corner — operator-only, see ?debug=1 note above */}
+      {showDebug ? (
+        <div className="stage-status">
+          <span
+            className={`live-dot ${
+              connection === "live"
+                ? "bg-emerald-400"
+                : connection === "polling"
+                  ? "bg-azure-400"
+                  : connection === "error"
+                    ? "bg-red-400"
+                    : "bg-slate-300"
+            }`}
+          />
+          {connection === "live"
+            ? "LIVE"
+            : connection === "polling"
+              ? demoMode
+                ? "DEMO"
+                : "POLLING"
+              : connection === "error"
+                ? "RECONNECTING"
+                : "CONNECTING"}
+        </div>
+      ) : null}
 
       <button
         type="button"
