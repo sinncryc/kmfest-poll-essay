@@ -464,6 +464,14 @@ body {
   color: var(--kv-gold);
 }
 
+.kv-disclaimer {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(0.66rem, 2.6vw, 0.78rem);
+  letter-spacing: 0.02em;
+  color: rgba(207, 232, 255, 0.65);
+}
+
 .kv-error {
   margin: 0;
   border-radius: 0.75rem;

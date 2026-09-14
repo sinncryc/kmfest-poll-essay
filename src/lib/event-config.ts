@@ -49,6 +49,8 @@ export const eventConfig = {
       "Regardless of which side you chose, what is ONE concern you would want addressed before using AI in this situation?",
     placeholder: "Type your answer here…",
     footnote: "Be honest, be thoughtful, be part of the bigger picture.",
+    /** Shown under the submit button — no name or account is ever attached to an answer. */
+    disclaimer: "This will be anonymous.",
   },
 
   /** Headings on the big screen. */

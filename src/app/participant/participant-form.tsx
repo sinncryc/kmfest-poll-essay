@@ -187,9 +187,6 @@ export default function ParticipantForm() {
             ) : null}
 
             <div className="kv-submit-row">
-              <span className="kv-badge kv-badge-send" aria-hidden>
-                <SendIcon />
-              </span>
               <button type="submit" disabled={!canSubmit} className="kv-submit">
                 {status === "submitting" ? (
                   <>
@@ -204,6 +201,8 @@ export default function ParticipantForm() {
                 )}
               </button>
             </div>
+
+            <p className="kv-disclaimer">{essay.disclaimer}</p>
 
             <div className="kv-footnote">
               <span className="kv-badge kv-badge-sm" aria-hidden>
@@ -330,19 +329,6 @@ function BulbIcon() {
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function SendIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-[55%] w-[55%]">
-      <path
-        d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z"
-        stroke="currentColor"
-        strokeWidth="2"
         strokeLinejoin="round"
       />
     </svg>
