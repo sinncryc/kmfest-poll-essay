@@ -148,7 +148,9 @@ export function ConcernsPanel({
               <p className="panel-waiting">No answers yet.</p>
             ) : (
               quotes.map((quote) => (
-                <blockquote key={quote.id} className="quote-card">
+                // Keyed by id, so an arriving answer mounts a fresh node and
+                // plays the entrance while the ones already up sit still.
+                <blockquote key={quote.id} className="quote-card fade-up">
                   <span className="quote-mark" aria-hidden>
                     “
                   </span>

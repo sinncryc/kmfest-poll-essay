@@ -594,6 +594,9 @@ body {
 .stage {
   --river-x: clamp(9rem, 12.5vw, 17rem);
   --river-y: clamp(2.6rem, 6vh, 4.8rem);
+  /* Widest a river card may render. Declared here (not just on .river-card)
+     so the ring can measure it and work out how many cards fit. */
+  --river-card-w: clamp(7rem, 11vw, 13rem);
 
   position: relative;
   width: 100vw;
@@ -1111,8 +1114,9 @@ body {
   pointer-events: none;
 }
 
-/* Invisible — exists only so its rendered size resolves --river-x/--river-y
-   (both clamp()s against the viewport) to real pixels the path math can use. */
+/* Invisible. These exist only so their rendered size resolves the band's
+   clamp()s to real pixels, which is what the ring measures to build its path
+   and to decide how many cards fit without overlapping. */
 .river-probe {
   position: absolute;
   visibility: hidden;
@@ -1120,9 +1124,23 @@ body {
   height: 0;
 }
 
-/* Every card shares one motion path (computed in JS from the ring's measured
-   size), so the whole ring is a single continuous clockwise loop with real
-   corners — not four lanes that stop dead at the edge of their own track. */
+.river-probe-x {
+  width: var(--river-x);
+}
+
+.river-probe-y {
+  height: var(--river-y);
+}
+
+.river-probe-card {
+  width: var(--river-card-w);
+}
+
+/* Every card runs the same keyframes — written at runtime from the measured
+   band — so the ring is a single continuous clockwise loop with real corners,
+   not four lanes that stop dead at the edge of their own track. Each card's
+   inline transform holds its resting spot, so even if the animation never
+   starts the border still renders correctly, just still. */
 .river-card {
   position: absolute;
   top: 0;
@@ -1132,32 +1150,22 @@ body {
   isolation: isolate;
   border-radius: 999px;
   border: 1px solid var(--kv-line-soft);
-  background: rgba(6, 40, 86, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Opaque enough to drop the backdrop-filter: two dozen blurred surfaces
+     moving at once is the one thing on this screen that could cost frames. */
+  background: rgba(6, 40, 86, 0.66);
   padding: clamp(0.3rem, 0.55vw, 0.6rem) clamp(0.65rem, 1.1vw, 1.15rem);
   font-size: clamp(0.55rem, 0.75vw, 0.9rem);
   line-height: 1.35;
   color: #dceeff;
   /* One shape has to work on both the thin top/bottom band and the wide
-     left/right band, since the same card travels through both — capped
-     narrow enough to clear the tighter of the two. */
-  max-width: clamp(7rem, 11vw, 13rem);
+     left/right band, since the same card travels through both. */
+  max-width: var(--river-card-w);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  animation-name: ring-loop;
+  animation-name: river-ring-loop;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-}
-
-@keyframes ring-loop {
-  from {
-    offset-distance: 0%;
-  }
-  to {
-    offset-distance: 100%;
-  }
 }
 
 /* A just-arrived answer gets the spinning ring — the same conic-gradient +

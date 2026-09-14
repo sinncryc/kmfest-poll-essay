@@ -40,8 +40,16 @@ export default function DisplayStage() {
   // ?debug=1 to the URL during setup/rehearsal to see it.
   const [showDebug, setShowDebug] = useState(false);
 
-  /** The three newest answers, shown verbatim beside the AI's clustering. */
-  const quotes = useMemo(() => pool.slice(0, 3), [pool]);
+  /**
+   * The three newest answers, shown verbatim beside the AI's clustering.
+   * Sorted by id rather than trusting the pool's order: the pool is seeded
+   * oldest-first from the snapshot but prepends live arrivals, so slicing it
+   * raw showed the three *oldest* answers until someone submitted again.
+   */
+  const quotes = useMemo(
+    () => [...pool].sort((a, b) => b.id - a.id).slice(0, 3),
+    [pool],
+  );
 
   useEffect(() => {
     setShowDebug(new URLSearchParams(window.location.search).has("debug"));

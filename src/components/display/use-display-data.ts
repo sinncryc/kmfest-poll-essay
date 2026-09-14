@@ -15,7 +15,17 @@ export type ConnectionState = "connecting" | "live" | "polling" | "error";
 /** Keep a bounded pool so the river can recycle without growing forever. */
 const POOL_LIMIT = 200;
 const POLL_INTERVAL_MS = 3000;
-const RESYNC_INTERVAL_MS = 60_000;
+/**
+ * Safety-net resync, even when the websocket reports itself healthy.
+ *
+ * Deliberately short: a "SUBSCRIBED" channel that silently delivers no rows
+ * (table missing from the `supabase_realtime` publication, an RLS filter, a
+ * proxy quietly dropping the socket) looks exactly like a quiet room, and on
+ * the big screen the difference is answers appearing instantly versus a
+ * minute late. One small read every few seconds, for one display client, is
+ * a cheap price for never having to trust that.
+ */
+const RESYNC_INTERVAL_MS = 5000;
 const EMPTY_POLL: PollResults = { a: 0, b: 0, total: 0 };
 
 export function useDisplayData() {
