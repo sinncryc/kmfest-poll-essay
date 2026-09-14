@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdminRequest } from "@/lib/auth";
-import { setTop3 } from "@/lib/store";
+import { setConcerns } from "@/lib/store";
 import { validateAiResult } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -25,12 +25,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const updatedAt = await setTop3(validated.value.top_3);
-    return NextResponse.json({ ok: true, updatedAt, top3: validated.value.top_3 });
+    const updatedAt = await setConcerns(validated.value.concerns);
+    return NextResponse.json({ ok: true, updatedAt, concerns: validated.value.concerns });
   } catch (error) {
     console.error("[admin/top3] publish failed", error);
     const message =
-      error instanceof Error ? error.message : "Gagal mempublikasikan Top 3.";
+      error instanceof Error ? error.message : "Gagal mempublikasikan hasil.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

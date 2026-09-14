@@ -11,11 +11,14 @@
 create table if not exists public.feedback (
   id          bigint generated always as identity primary key,
   message     text        not null check (char_length(message) between 10 and 500),
+  poll_choice text        check (poll_choice in ('A', 'B')),
   session_id  text,
   is_visible  boolean     not null default true,
   created_at  timestamptz not null default now()
 );
 
+comment on column public.feedback.poll_choice is
+  'A = USE AI NOW, B = UNDERSTAND FIRST — the vote submitted with this answer.';
 comment on column public.feedback.session_id is
   'Opaque random id from an httpOnly cookie. Not linked to any person.';
 comment on column public.feedback.is_visible is
@@ -25,11 +28,13 @@ create index if not exists feedback_visible_idx
   on public.feedback (is_visible, id desc);
 create index if not exists feedback_created_at_idx
   on public.feedback (created_at desc);
+create index if not exists feedback_poll_choice_idx
+  on public.feedback (poll_choice);
 
--- Exactly three rows, one per rank. The admin "Update Display" action
--- upserts on rank, which is what /display listens to.
+-- Up to five rows, one per rank. The admin "Update Display" action (and the
+-- auto-summarize cron) upsert on rank, which is what /display listens to.
 create table if not exists public.ai_summary (
-  rank       smallint    primary key check (rank between 1 and 3),
+  rank       smallint    primary key check (rank between 1 and 5),
   title      text        not null,
   count      integer     not null default 0,
   summary    text        not null,
@@ -37,6 +42,9 @@ create table if not exists public.ai_summary (
 );
 
 alter table public.ai_summary replica identity full;
+-- /display also resyncs on DELETE (the admin reset), which needs the old
+-- row to be published.
+alter table public.feedback replica identity full;
 
 -- ---------------------------------------------------------------------
 -- 2. Row level security

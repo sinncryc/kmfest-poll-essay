@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isClean } from "@/lib/moderation";
 import { insertFeedback } from "@/lib/store";
-import { validateFeedbackMessage } from "@/lib/validation";
+import { validateEssay, validatePollChoice } from "@/lib/validation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,18 +45,24 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Body bukan JSON yang valid." }, { status: 400 });
+    return NextResponse.json({ error: "Request body is not valid JSON." }, { status: 400 });
   }
 
-  const message = (body as Record<string, unknown> | null)?.message;
-  const validated = validateFeedbackMessage(message);
+  const payload = body as Record<string, unknown> | null;
+
+  const validated = validateEssay(payload?.message);
   if (!validated.ok) {
     return NextResponse.json({ error: validated.error }, { status: 400 });
   }
 
+  const poll = validatePollChoice(payload?.pollChoice);
+  if (!poll.ok) {
+    return NextResponse.json({ error: poll.error }, { status: 400 });
+  }
+
   if (request.cookies.get(SUBMITTED_COOKIE)?.value === "1") {
     return NextResponse.json(
-      { error: "Anda sudah mengirim feedback dari perangkat ini. Terima kasih!" },
+      { error: "You have already responded from this device. Thank you!" },
       { status: 409 },
     );
   }
@@ -67,7 +73,7 @@ export async function POST(request: NextRequest) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   if (ipFlooding(ip)) {
     return NextResponse.json(
-      { error: "Terlalu banyak permintaan. Coba lagi sebentar." },
+      { error: "Too many requests. Please try again in a moment." },
       { status: 429 },
     );
   }
@@ -75,6 +81,7 @@ export async function POST(request: NextRequest) {
   try {
     const row = await insertFeedback({
       message: validated.value,
+      pollChoice: poll.value,
       sessionId,
       isVisible: isClean(validated.value),
     });
@@ -98,7 +105,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[feedback] insert failed", error);
     return NextResponse.json(
-      { error: "Gagal menyimpan feedback. Silakan coba lagi." },
+      { error: "Could not save your response. Please try again." },
       { status: 500 },
     );
   }

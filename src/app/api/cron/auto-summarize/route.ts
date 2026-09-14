@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cronSecretMatches } from "@/lib/auth";
 import { buildAiPrompt } from "@/lib/ai-prompt";
-import { countFeedback, listFeedback, setTop3 } from "@/lib/store";
+import { countFeedback, listFeedback, setConcerns } from "@/lib/store";
 import { validateAiResult } from "@/lib/validation";
 import type { ExportPayload } from "@/lib/types";
 
@@ -79,7 +79,12 @@ export async function GET(request: NextRequest) {
       responses: rows
         .slice()
         .reverse()
-        .map((row) => ({ id: row.id, text: row.message, created_at: row.created_at })),
+        .map((row) => ({
+          id: row.id,
+          text: row.message,
+          poll_choice: row.poll_choice,
+          created_at: row.created_at,
+        })),
     };
 
     const geminiResponse = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
@@ -121,7 +126,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 502 });
     }
 
-    const updatedAt = await setTop3(result.value.top_3);
+    const updatedAt = await setConcerns(result.value.concerns);
     return NextResponse.json({ ok: true, updatedAt, totalResponses: total });
   } catch (error) {
     console.error("[cron/auto-summarize] failed", error);

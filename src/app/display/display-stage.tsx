@@ -1,32 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import EventLogos from "@/components/brand/event-logos";
-import FeedbackRiver from "@/components/display/feedback-river";
-import StageBackground from "@/components/display/stage-background";
-import TopThree from "@/components/display/top-three";
+import TitleLockup from "@/components/brand/title-lockup";
+import BorderRiver from "@/components/display/border-river";
+import { ConcernsPanel, PollPanel } from "@/components/display/display-panels";
 import { useDisplayData } from "@/components/display/use-display-data";
-import { usePublishPulse } from "@/components/display/use-publish-pulse";
 import { eventConfig } from "@/lib/event-config";
 
+/**
+ * The projector screen.
+ *
+ * Layout follows the approved Display key visual — poll on the left, essay
+ * results plus a sample of raw answers on the right — but sits on the
+ * *background* artwork rather than the mockup's darker plate, per the brief.
+ *
+ * The outer band of the screen belongs to the live answer river; every piece
+ * of branding is inset from it, which is exactly why the logos and title were
+ * lifted out of the background PNG: at this size they can be scaled down and
+ * pulled inward, leaving a clean ring for participant input to circle.
+ */
 export default function DisplayStage() {
   const {
     pool,
-    pending,
-    consumePending,
-    top3,
-    top3UpdatedAt,
+    freshIds,
+    poll,
+    concerns,
     total,
     connection,
     demoMode,
     ready,
   } = useDisplayData();
 
-  // Drives the poster-asset flare in StageBackground — same "just
-  // published" moment TopThree pulses on, derived the same way.
-  const pulsing = usePublishPulse(top3UpdatedAt ?? "initial");
-
   const [controlsVisible, setControlsVisible] = useState(true);
+
+  /** The three newest answers, shown verbatim beside the AI's clustering. */
+  const quotes = useMemo(() => pool.slice(0, 3), [pool]);
 
   // Controls fade away so the screen needs no operator during the event.
   useEffect(() => {
@@ -50,43 +60,52 @@ export default function DisplayStage() {
   }, []);
 
   return (
-    <main className="relative h-dvh w-screen overflow-hidden bg-ink-900">
-      <StageBackground pulsing={pulsing} />
-
-      {/* Mirrors the poster's own top bar — Astra left, Satu Indonesia right. */}
-      <div className="pointer-events-none absolute inset-x-[1.6vw] top-[1.6vh] z-30">
-        <EventLogos size="sm" />
+    <main className="stage">
+      <div aria-hidden className="stage-backdrop">
+        <Image
+          src="/brand/display-bg.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
+        />
       </div>
 
-      <FeedbackRiver pool={pool} pending={pending} onConsume={consumePending} />
+      <BorderRiver pool={pool} freshIds={freshIds} />
 
-      {/* Center column — sits inside the river lanes so nothing overlaps. */}
-      <section className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-[clamp(200px,17vw,330px)] py-[clamp(74px,9vh,132px)]">
-        <TopThree items={top3} updatedAt={top3UpdatedAt} />
+      <div className="stage-inner">
+        <header className="stage-head">
+          <EventLogos size="lg" />
+          <TitleLockup className="stage-title" />
+        </header>
 
-        <div className="mt-[3vh] flex items-center gap-[1.6vw] text-[clamp(0.6rem,0.72vw,0.85rem)] font-semibold tracking-[0.26em] text-slate-500">
-          <span>{eventConfig.organization}</span>
-          <span aria-hidden className="h-3 w-px bg-slate-700" />
-          <span className="text-azure-300/80">{eventConfig.name}</span>
-          <span aria-hidden className="h-3 w-px bg-slate-700" />
-          <span>
-            {ready ? total.toLocaleString("id-ID") : "—"}{" "}
-            <span className="text-slate-600">VOICES</span>
-          </span>
+        <div className="stage-panels">
+          <PollPanel results={poll} />
+          <ConcernsPanel concerns={concerns} quotes={quotes} total={ready ? total : 0} />
         </div>
-      </section>
+
+        <footer className="stage-motto">
+          {eventConfig.motto.map((word, index) => (
+            <span key={word}>
+              {index > 0 ? <i aria-hidden>•</i> : null}
+              {word}
+            </span>
+          ))}
+        </footer>
+      </div>
 
       {/* Status corner */}
-      <div className="absolute bottom-[1.1vh] right-[1vw] z-30 flex items-center gap-2 rounded-full border border-white/5 bg-black/30 px-3 py-1.5 text-[0.6rem] font-semibold tracking-[0.18em] text-slate-500 backdrop-blur">
+      <div className="stage-status">
         <span
-          className={`live-dot h-1.5 w-1.5 rounded-full ${
+          className={`live-dot ${
             connection === "live"
               ? "bg-emerald-400"
               : connection === "polling"
                 ? "bg-azure-400"
                 : connection === "error"
                   ? "bg-red-400"
-                  : "bg-slate-500"
+                  : "bg-slate-300"
           }`}
         />
         {connection === "live"
@@ -103,9 +122,7 @@ export default function DisplayStage() {
       <button
         type="button"
         onClick={toggleFullscreen}
-        className={`absolute bottom-[1.1vh] left-[1vw] z-30 rounded-full border border-white/5 bg-black/30 px-3 py-1.5 text-[0.6rem] font-semibold tracking-[0.18em] text-slate-500 backdrop-blur transition-opacity duration-700 hover:text-slate-300 ${
-          controlsVisible ? "opacity-100" : "opacity-0"
-        }`}
+        className={`stage-fullscreen ${controlsVisible ? "opacity-100" : "opacity-0"}`}
       >
         FULLSCREEN
       </button>

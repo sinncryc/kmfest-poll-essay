@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { eventConfig } from "@/lib/event-config";
 import { AI_PROMPT } from "@/lib/ai-prompt";
-import type { TopThreeItem } from "@/lib/types";
+import type { ConcernItem, PollResults } from "@/lib/types";
 import { validateAiResult } from "@/lib/validation";
 import EventLogos from "@/components/brand/event-logos";
 
 type Stats = {
   totalResponses: number;
-  top3: TopThreeItem[];
+  poll: PollResults;
+  concerns: ConcernItem[];
   lastAiUpdate: string | null;
   demoMode: boolean;
   canPublish: boolean;
@@ -153,7 +154,7 @@ function LoginScreen({
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [raw, setRaw] = useState("");
-  const [preview, setPreview] = useState<TopThreeItem[] | null>(null);
+  const [preview, setPreview] = useState<ConcernItem[] | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [publishState, setPublishState] = useState<
     { kind: "idle" } | { kind: "busy" } | { kind: "ok"; at: string } | { kind: "error"; message: string }
@@ -207,7 +208,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       return;
     }
     setParseError(null);
-    setPreview(result.value.top_3);
+    setPreview(result.value.concerns);
   }
 
   async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
@@ -224,7 +225,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       const response = await fetch("/api/admin/top3", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ top_3: preview }),
+        body: JSON.stringify({ concerns: preview }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -388,7 +389,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           onChange={(event) => parse(event.target.value)}
           rows={7}
           spellCheck={false}
-          placeholder='{ "top_3": [ { "rank": 1, "title": "…", "count": 32, "summary": "…" }, … ] }'
+          placeholder='{ "concerns": [ { "rank": 1, "title": "…", "count": 32, "summary": "…" }, … ] }'
           className="mt-4 w-full rounded-xl border border-ink-500 bg-ink-900 p-4 font-mono text-xs leading-relaxed text-slate-200 outline-none focus:border-azure-400/70"
         />
 
@@ -483,13 +484,13 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </p>
         )}
 
-        {stats && stats.top3.length > 0 ? (
+        {stats && stats.concerns.length > 0 ? (
           <div className="mt-6 border-t border-ink-600 pt-4">
             <p className="text-[0.6rem] font-bold tracking-[0.24em] text-slate-500">
               SEDANG TAYANG DI LAYAR
             </p>
             <ul className="mt-2 space-y-1 text-xs text-slate-400">
-              {stats.top3.map((item) => (
+              {stats.concerns.map((item) => (
                 <li key={item.rank}>
                   <span className="text-slate-200">#{item.rank} {item.title}</span>{" "}
                   · {item.count} responses

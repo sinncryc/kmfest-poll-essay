@@ -6,9 +6,15 @@ import {
   hasServiceRole,
   isSupabaseConfigured,
 } from "./supabase";
-import type { DisplayState, FeedbackRow, TopThreeItem } from "./types";
+import type {
+  ConcernItem,
+  DisplayState,
+  FeedbackRow,
+  PollChoice,
+  PollResults,
+} from "./types";
 
-/** How much recent feedback the display seeds its river with. */
+/** How much recent feedback the display seeds its border river with. */
 export const RIVER_SEED_LIMIT = 120;
 
 /* ------------------------------------------------------------------ */
@@ -23,8 +29,8 @@ export const RIVER_SEED_LIMIT = 120;
 type DemoStore = {
   feedback: FeedbackRow[];
   nextId: number;
-  top3: TopThreeItem[];
-  top3UpdatedAt: string | null;
+  concerns: ConcernItem[];
+  concernsUpdatedAt: string | null;
 };
 
 const globalForDemo = globalThis as unknown as { __afDemoStore?: DemoStore };
@@ -33,8 +39,8 @@ function demo(): DemoStore {
   globalForDemo.__afDemoStore ??= {
     feedback: [],
     nextId: 1,
-    top3: [],
-    top3UpdatedAt: null,
+    concerns: [],
+    concernsUpdatedAt: null,
   };
   return globalForDemo.__afDemoStore;
 }
@@ -54,8 +60,11 @@ function readClient() {
   return hasServiceRole() ? getAdminClient() : getServerClient();
 }
 
+const ROW_COLUMNS = "id, message, poll_choice, created_at, is_visible";
+
 export async function insertFeedback(params: {
   message: string;
+  pollChoice: PollChoice;
   sessionId: string;
   isVisible: boolean;
 }): Promise<FeedbackRow> {
@@ -63,6 +72,7 @@ export async function insertFeedback(params: {
     const row: FeedbackRow = {
       id: demo().nextId++,
       message: params.message,
+      poll_choice: params.pollChoice,
       created_at: new Date().toISOString(),
       is_visible: params.isVisible,
     };
@@ -74,10 +84,11 @@ export async function insertFeedback(params: {
     .from("feedback")
     .insert({
       message: params.message,
+      poll_choice: params.pollChoice,
       session_id: params.sessionId,
       is_visible: params.isVisible,
     })
-    .select("id, message, created_at, is_visible")
+    .select(ROW_COLUMNS)
     .single();
 
   if (error) throw new Error(error.message);
@@ -100,7 +111,7 @@ export async function listFeedback(options?: {
 
   let query = readClient()
     .from("feedback")
-    .select("id, message, created_at, is_visible")
+    .select(ROW_COLUMNS)
     .order("id", { ascending: false })
     .limit(limit);
 
@@ -122,12 +133,38 @@ export async function countFeedback(): Promise<number> {
   return count ?? 0;
 }
 
-export async function getTop3(): Promise<{
-  items: TopThreeItem[];
+/**
+ * Live A/B tally. Counted server-side with two head-only queries rather than
+ * pulling every row, so this stays cheap even at a few thousand responses.
+ */
+export async function countPoll(): Promise<PollResults> {
+  if (usingDemoStore()) {
+    const rows = demo().feedback;
+    const a = rows.filter((r) => r.poll_choice === "A").length;
+    const b = rows.filter((r) => r.poll_choice === "B").length;
+    return { a, b, total: a + b };
+  }
+
+  const client = readClient();
+  const [resA, resB] = await Promise.all([
+    client.from("feedback").select("id", { count: "exact", head: true }).eq("poll_choice", "A"),
+    client.from("feedback").select("id", { count: "exact", head: true }).eq("poll_choice", "B"),
+  ]);
+
+  if (resA.error) throw new Error(resA.error.message);
+  if (resB.error) throw new Error(resB.error.message);
+
+  const a = resA.count ?? 0;
+  const b = resB.count ?? 0;
+  return { a, b, total: a + b };
+}
+
+export async function getConcerns(): Promise<{
+  items: ConcernItem[];
   updatedAt: string | null;
 }> {
   if (usingDemoStore()) {
-    return { items: demo().top3, updatedAt: demo().top3UpdatedAt };
+    return { items: demo().concerns, updatedAt: demo().concernsUpdatedAt };
   }
 
   const { data, error } = await readClient()
@@ -139,7 +176,7 @@ export async function getTop3(): Promise<{
 
   const rows = data ?? [];
   const items = rows.map((r) => ({
-    rank: r.rank as 1 | 2 | 3,
+    rank: r.rank as ConcernItem["rank"],
     title: r.title as string,
     count: r.count as number,
     summary: r.summary as string,
@@ -155,58 +192,66 @@ export async function getTop3(): Promise<{
   return { items, updatedAt };
 }
 
-export async function setTop3(items: TopThreeItem[]): Promise<string> {
+export async function setConcerns(items: ConcernItem[]): Promise<string> {
   const updatedAt = new Date().toISOString();
 
   if (usingDemoStore()) {
-    demo().top3 = items;
-    demo().top3UpdatedAt = updatedAt;
+    demo().concerns = items;
+    demo().concernsUpdatedAt = updatedAt;
     return updatedAt;
   }
 
   if (!hasServiceRole()) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY belum di-set di server, jadi Top 3 tidak bisa dipublish.",
+      "SUPABASE_SERVICE_ROLE_KEY is not set on the server, so results cannot be published.",
     );
   }
 
-  const { error } = await getAdminClient()
+  const admin = getAdminClient();
+
+  // A shorter list than last time must not leave stale rows behind on the
+  // projector, so drop anything ranked past what we are about to write.
+  const highest = items.reduce((max, item) => Math.max(max, item.rank), 0);
+  const { error: pruneError } = await admin
     .from("ai_summary")
-    .upsert(
-      items.map((item) => ({
-        rank: item.rank,
-        title: item.title,
-        count: item.count,
-        summary: item.summary,
-        updated_at: updatedAt,
-      })),
-      { onConflict: "rank" },
-    );
+    .delete()
+    .gt("rank", highest);
+  if (pruneError) throw new Error(pruneError.message);
+
+  const { error } = await admin.from("ai_summary").upsert(
+    items.map((item) => ({
+      rank: item.rank,
+      title: item.title,
+      count: item.count,
+      summary: item.summary,
+      updated_at: updatedAt,
+    })),
+    { onConflict: "rank" },
+  );
 
   if (error) throw new Error(error.message);
   return updatedAt;
 }
 
 /**
- * Wipes ALL feedback and the published Top 3. For clearing trial-and-error
+ * Wipes ALL feedback and the published results. For clearing trial-and-error
  * data between test runs — or right before the real event so the audience
- * screen starts from zero — not for routine use. Destructive and
- * irreversible; the calling route requires admin auth and the dashboard
- * button confirms first.
+ * screen starts from zero. Destructive and irreversible; the calling route
+ * requires admin auth and the dashboard button confirms first.
  */
 export async function resetAllData(): Promise<void> {
   if (usingDemoStore()) {
     const store = demo();
     store.feedback = [];
     store.nextId = 1;
-    store.top3 = [];
-    store.top3UpdatedAt = null;
+    store.concerns = [];
+    store.concernsUpdatedAt = null;
     return;
   }
 
   if (!hasServiceRole()) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY belum di-set di server, jadi reset tidak bisa dilakukan.",
+      "SUPABASE_SERVICE_ROLE_KEY is not set on the server, so a reset cannot be performed.",
     );
   }
 
@@ -226,10 +271,11 @@ export async function resetAllData(): Promise<void> {
 }
 
 export async function getDisplayState(): Promise<DisplayState> {
-  const [rows, top3, total] = await Promise.all([
+  const [rows, concerns, total, poll] = await Promise.all([
     listFeedback({ limit: RIVER_SEED_LIMIT, onlyVisible: true }),
-    getTop3(),
+    getConcerns(),
     countFeedback(),
+    countPoll(),
   ]);
 
   return {
@@ -238,8 +284,9 @@ export async function getDisplayState(): Promise<DisplayState> {
       text: r.message,
       created_at: r.created_at,
     })),
-    top3: top3.items,
-    top3UpdatedAt: top3.updatedAt,
+    poll,
+    concerns: concerns.items,
+    concernsUpdatedAt: concerns.updatedAt,
     totalResponses: total,
     demoMode: usingDemoStore(),
   };

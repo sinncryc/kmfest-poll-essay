@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserClient, supabaseEnabled } from "@/lib/supabase-browser";
-import type { DisplayState, TopThreeItem } from "@/lib/types";
+import type { ConcernItem, DisplayState, PollChoice, PollResults } from "@/lib/types";
 
 export type RiverSource = {
   /** Unique per feedback row. */
@@ -16,12 +16,14 @@ export type ConnectionState = "connecting" | "live" | "polling" | "error";
 const POOL_LIMIT = 200;
 const POLL_INTERVAL_MS = 3000;
 const RESYNC_INTERVAL_MS = 60_000;
+const EMPTY_POLL: PollResults = { a: 0, b: 0, total: 0 };
 
 export function useDisplayData() {
   const [pool, setPool] = useState<RiverSource[]>([]);
-  const [pending, setPending] = useState<RiverSource[]>([]);
-  const [top3, setTop3] = useState<TopThreeItem[]>([]);
-  const [top3UpdatedAt, setTop3UpdatedAt] = useState<string | null>(null);
+  const [freshIds, setFreshIds] = useState<number[]>([]);
+  const [poll, setPoll] = useState<PollResults>(EMPTY_POLL);
+  const [concerns, setConcerns] = useState<ConcernItem[]>([]);
+  const [concernsUpdatedAt, setConcernsUpdatedAt] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [connection, setConnection] = useState<ConnectionState>(
     supabaseEnabled ? "connecting" : "polling",
@@ -29,26 +31,26 @@ export function useDisplayData() {
   const [demoMode, setDemoMode] = useState(false);
   const [ready, setReady] = useState(false);
 
-  const maxIdRef = useRef(0);
   const seenRef = useRef<Set<number>>(new Set());
 
   const ingest = useCallback((items: RiverSource[], asNew: boolean) => {
     const fresh = items.filter((item) => !seenRef.current.has(item.id));
     if (fresh.length === 0) return;
-    for (const item of fresh) {
-      seenRef.current.add(item.id);
-      if (item.id > maxIdRef.current) maxIdRef.current = item.id;
-    }
+    for (const item of fresh) seenRef.current.add(item.id);
+
     setPool((prev) => [...fresh, ...prev].slice(0, POOL_LIMIT));
     if (asNew) {
-      setPending((prev) => [...prev, ...fresh].slice(-60));
+      // "Fresh" only drives the highlight ring; keep the list short so the
+      // whole border does not light up at once during a burst of answers.
+      setFreshIds((prev) => [...fresh.map((f) => f.id), ...prev].slice(0, 8));
     }
   }, []);
 
   const applySnapshot = useCallback(
     (state: DisplayState, treatAsNew: boolean) => {
-      setTop3(state.top3);
-      setTop3UpdatedAt(state.top3UpdatedAt);
+      setPoll(state.poll ?? EMPTY_POLL);
+      setConcerns(state.concerns ?? []);
+      setConcernsUpdatedAt(state.concernsUpdatedAt);
       setTotal(state.totalResponses);
       setDemoMode(state.demoMode);
       // Snapshot arrives newest-first; reverse so the river ingests in order.
@@ -96,7 +98,7 @@ export function useDisplayData() {
     }
 
     const channel = client
-      .channel("anniversary-display")
+      .channel("kmfest-display")
       .on(
         "postgres_changes",
         {
@@ -106,20 +108,30 @@ export function useDisplayData() {
           filter: "is_visible=eq.true",
         },
         (payload) => {
-          const row = payload.new as { id: number; message: string };
-          if (typeof row?.id === "number" && typeof row?.message === "string") {
-            ingest([{ id: row.id, text: row.message }], true);
-            setTotal((value) => value + 1);
+          const row = payload.new as {
+            id: number;
+            message: string;
+            poll_choice: PollChoice | null;
+          };
+          if (typeof row?.id !== "number" || typeof row?.message !== "string") return;
+
+          ingest([{ id: row.id, text: row.message }], true);
+          setTotal((value) => value + 1);
+          // Move the bar immediately rather than waiting for the next resync —
+          // the vote is the thing the room is watching.
+          if (row.poll_choice === "A" || row.poll_choice === "B") {
+            setPoll((prev) => ({
+              a: prev.a + (row.poll_choice === "A" ? 1 : 0),
+              b: prev.b + (row.poll_choice === "B" ? 1 : 0),
+              total: prev.total + 1,
+            }));
           }
         },
       )
       .on(
-        // Only INSERT bumps the counter locally above — a DELETE (the admin
-        // "Reset Semua Data" button wipes the whole table at once) had no
-        // listener at all, so the VOICES count only ever went back to 0 by
-        // accident, piggybacking on the ai_summary handler below also firing
-        // during a reset. Listening here directly means the total is always
-        // correct after a reset even if that coincidence stops holding.
+        // Only INSERT bumps the counters locally above — a DELETE (the admin
+        // "Reset" button wipes the whole table at once) had no listener at
+        // all, so the totals only ever went back to 0 by accident.
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "feedback" },
         () => {
@@ -149,16 +161,12 @@ export function useDisplayData() {
     };
   }, [fetchSnapshot, ingest]);
 
-  const consumePending = useCallback((id: number) => {
-    setPending((prev) => prev.filter((item) => item.id !== id));
-  }, []);
-
   return {
     pool,
-    pending,
-    consumePending,
-    top3,
-    top3UpdatedAt,
+    freshIds,
+    poll,
+    concerns,
+    concernsUpdatedAt,
     total,
     connection,
     demoMode,

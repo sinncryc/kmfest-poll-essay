@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdminRequest } from "@/lib/auth";
-import { countFeedback, getTop3, usingDemoStore } from "@/lib/store";
+import { countFeedback, countPoll, getConcerns, usingDemoStore } from "@/lib/store";
 import { hasServiceRole } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -12,12 +12,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [total, top3] = await Promise.all([countFeedback(), getTop3()]);
+    const [total, concerns, poll] = await Promise.all([
+      countFeedback(),
+      getConcerns(),
+      countPoll(),
+    ]);
     return NextResponse.json(
       {
         totalResponses: total,
-        top3: top3.items,
-        lastAiUpdate: top3.updatedAt,
+        poll,
+        concerns: concerns.items,
+        lastAiUpdate: concerns.updatedAt,
         demoMode: usingDemoStore(),
         canPublish: usingDemoStore() || hasServiceRole(),
       },

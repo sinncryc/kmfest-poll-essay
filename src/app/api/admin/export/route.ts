@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         .map((row) => ({
           id: row.id,
           text: row.message,
+          poll_choice: row.poll_choice,
           created_at: row.created_at,
         })),
     };

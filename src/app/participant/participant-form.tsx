@@ -1,26 +1,40 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
+import EventLogos from "@/components/brand/event-logos";
+import TitleLockup from "@/components/brand/title-lockup";
 import {
-  FEEDBACK_MAX_LENGTH,
-  FEEDBACK_MIN_LENGTH,
+  ESSAY_MAX_LENGTH,
+  ESSAY_MIN_LENGTH,
   eventConfig,
 } from "@/lib/event-config";
-import EventLogos from "@/components/brand/event-logos";
+import type { PollChoice } from "@/lib/types";
 
 type Status = "idle" | "submitting" | "success";
 
+const { poll, essay, motto } = eventConfig;
+
+/**
+ * The participant screen, built to the approved Participant key visual: the
+ * artwork is a full-bleed backdrop, and everything above it is fluid — all
+ * type and spacing is expressed in `clamp()`/viewport units so one layout
+ * fits every phone from a small 5" device up to a tablet, with no fixed
+ * breakpoints to fall between.
+ */
 export default function ParticipantForm() {
+  const [choice, setChoice] = useState<PollChoice | null>(null);
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const trimmed = useMemo(() => message.trim(), [message]);
-  const tooShort = trimmed.length > 0 && trimmed.length < FEEDBACK_MIN_LENGTH;
+  const tooShort = trimmed.length > 0 && trimmed.length < ESSAY_MIN_LENGTH;
   const canSubmit =
     status !== "submitting" &&
-    trimmed.length >= FEEDBACK_MIN_LENGTH &&
-    trimmed.length <= FEEDBACK_MAX_LENGTH;
+    choice !== null &&
+    trimmed.length >= ESSAY_MIN_LENGTH &&
+    trimmed.length <= ESSAY_MAX_LENGTH;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -33,173 +47,318 @@ export default function ParticipantForm() {
       const response = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({ message: trimmed, pollChoice: choice }),
       });
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        setError(payload?.error ?? "Gagal mengirim feedback. Silakan coba lagi.");
+        setError(payload?.error ?? "Could not send your response. Please try again.");
         setStatus("idle");
         return;
       }
 
       setStatus("success");
     } catch {
-      setError("Koneksi bermasalah. Periksa jaringan Anda lalu coba lagi.");
+      setError("Connection problem. Check your network and try again.");
       setStatus("idle");
     }
   }
 
-  if (status === "success") {
-    return <SuccessScreen />;
-  }
+  if (status === "success") return <SuccessScreen />;
 
   return (
-    <main className="relative flex min-h-dvh flex-col bg-ink-900 px-5 pt-8 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(80%_100%_at_50%_0%,rgba(31,120,209,0.28),transparent_70%)]"
-      />
+    <main className="kv-screen">
+      <KeyVisualBackdrop />
 
-      <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col">
-        <header className="fade-up">
-          <EventLogos size="sm" className="mb-5" />
-          <p className="text-[0.68rem] font-semibold tracking-[0.28em] text-azure-300/70">
-            {eventConfig.organization}
-          </p>
-          <p className="mt-1 font-display text-sm font-semibold tracking-[0.16em] text-azure-300">
-            {eventConfig.name}
-          </p>
+      <div className="kv-shell">
+        <header className="kv-head">
+          <EventLogos size="sm" />
+          <TitleLockup className="kv-title" />
         </header>
 
-        <h1 className="fade-up mt-8 font-display text-3xl font-extrabold leading-tight text-white">
-          Share Your Voice
-        </h1>
-        <p className="fade-up mt-2 text-sm leading-relaxed text-slate-400">
-          Jawaban Anda anonim. Tidak ada nama, email, atau data pribadi yang
-          disimpan.
-        </p>
+        <form onSubmit={handleSubmit} className="kv-stack">
+          {/* ---------------- Poll ---------------- */}
+          <section className="kv-card fade-up" aria-labelledby="poll-heading">
+            <div className="kv-card-head">
+              <span className="kv-badge" aria-hidden>
+                <BarsIcon />
+              </span>
+              <div>
+                <h2 id="poll-heading" className="kv-card-label">
+                  {poll.label}
+                </h2>
+                <p className="kv-card-question">{poll.question}</p>
+              </div>
+            </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 flex flex-1 flex-col">
-          <label
-            htmlFor="feedback"
-            className="fade-up block rounded-2xl border border-azure-400/15 bg-ink-700/60 p-4 text-[0.95rem] font-medium leading-relaxed text-slate-100"
-          >
-            {eventConfig.question}
-          </label>
+            <p className="kv-helper">{poll.helper}</p>
 
-          <textarea
-            id="feedback"
-            name="feedback"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            maxLength={FEEDBACK_MAX_LENGTH}
-            rows={6}
-            autoFocus
-            disabled={status === "submitting"}
-            placeholder="Tulis satu hal yang menurut Anda paling penting…"
-            className="mt-4 w-full resize-none rounded-2xl border border-ink-500 bg-ink-800/80 p-4 text-base leading-relaxed text-white outline-none transition placeholder:text-slate-600 focus:border-azure-400/70 focus:ring-4 focus:ring-azure-500/15 disabled:opacity-60"
-          />
-
-          <div className="mt-2 flex items-center justify-between text-xs">
-            <span className={tooShort ? "text-amber-400" : "text-slate-500"}>
-              {tooShort
-                ? `Minimal ${FEEDBACK_MIN_LENGTH} karakter`
-                : `Minimal ${FEEDBACK_MIN_LENGTH}, maksimal ${FEEDBACK_MAX_LENGTH} karakter`}
-            </span>
-            <span
-              className={
-                trimmed.length > FEEDBACK_MAX_LENGTH - 50
-                  ? "text-amber-400"
-                  : "text-slate-500"
-              }
+            <div
+              role="radiogroup"
+              aria-labelledby="poll-heading"
+              className="kv-options"
             >
-              {trimmed.length}/{FEEDBACK_MAX_LENGTH}
-            </span>
-          </div>
+              {poll.options.map((option) => {
+                const active = choice === option.key;
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    disabled={status === "submitting"}
+                    onClick={() => setChoice(option.key as PollChoice)}
+                    className={`kv-option kv-option-${option.key.toLowerCase()} ${
+                      active ? "is-active" : ""
+                    }`}
+                  >
+                    <span className="kv-option-key" aria-hidden>
+                      {option.key}
+                    </span>
+                    <span className="kv-option-body">
+                      <span className="kv-option-title">{option.title}</span>
+                      <span className="kv-option-quote">“{option.quote}”</span>
+                    </span>
+                    <span className="kv-radio" aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
 
-          {error ? (
-            <p
-              role="alert"
-              className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
-            >
-              {error}
-            </p>
-          ) : null}
+            <div className="kv-footnote">
+              <span className="kv-badge kv-badge-sm" aria-hidden>
+                <PeopleIcon />
+              </span>
+              <span>
+                <strong>{poll.footnoteTitle}</strong>
+                <br />
+                {poll.footnoteBody}
+              </span>
+            </div>
+          </section>
 
-          <div className="flex-1" />
+          {/* ---------------- Essay ---------------- */}
+          <section className="kv-card fade-up" aria-labelledby="essay-heading">
+            <div className="kv-card-head">
+              <span className="kv-badge" aria-hidden>
+                <PencilIcon />
+              </span>
+              <div>
+                <h2 id="essay-heading" className="kv-card-label">
+                  {essay.label}
+                </h2>
+                <p className="kv-card-question">{essay.question}</p>
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="mt-8 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-gold-300 to-gold-500 text-base font-bold tracking-wide text-ink-900 shadow-[0_12px_32px_rgba(224,180,92,0.28)] transition active:scale-[0.985] disabled:cursor-not-allowed disabled:from-ink-600 disabled:to-ink-600 disabled:text-slate-500 disabled:shadow-none"
-          >
-            {status === "submitting" ? (
-              <>
-                <Spinner />
-                Mengirim…
-              </>
-            ) : (
-              "Kirim Feedback"
-            )}
-          </button>
+            <label htmlFor="essay" className="kv-prompt">
+              {essay.prompt}
+            </label>
 
-          <p className="mt-4 text-center text-[0.7rem] leading-relaxed text-slate-600">
-            Satu peserta, satu masukan. Feedback Anda akan tampil di layar utama
-            tanpa identitas.
-          </p>
+            <div className="kv-field">
+              <textarea
+                id="essay"
+                name="essay"
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                maxLength={ESSAY_MAX_LENGTH}
+                rows={4}
+                disabled={status === "submitting"}
+                placeholder={essay.placeholder}
+                className="kv-textarea"
+              />
+              <span
+                className={`kv-counter ${
+                  trimmed.length > ESSAY_MAX_LENGTH - 30 ? "is-warn" : ""
+                }`}
+              >
+                {trimmed.length}/{ESSAY_MAX_LENGTH}
+              </span>
+            </div>
+
+            {tooShort ? (
+              <p className="kv-hint">At least {ESSAY_MIN_LENGTH} characters.</p>
+            ) : null}
+
+            {error ? (
+              <p role="alert" className="kv-error">
+                {error}
+              </p>
+            ) : null}
+
+            <div className="kv-submit-row">
+              <span className="kv-badge kv-badge-send" aria-hidden>
+                <SendIcon />
+              </span>
+              <button type="submit" disabled={!canSubmit} className="kv-submit">
+                {status === "submitting" ? (
+                  <>
+                    <Spinner />
+                    SENDING…
+                  </>
+                ) : (
+                  <>
+                    SUBMIT
+                    <ArrowIcon />
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="kv-footnote">
+              <span className="kv-badge kv-badge-sm" aria-hidden>
+                <BulbIcon />
+              </span>
+              <span>{essay.footnote}</span>
+            </div>
+          </section>
         </form>
+
+        <footer className="kv-motto">
+          {motto.map((word, index) => (
+            <span key={word}>
+              {index > 0 ? <i aria-hidden>•</i> : null}
+              {word}
+            </span>
+          ))}
+        </footer>
       </div>
     </main>
   );
 }
 
-function Spinner() {
+/** Full-bleed key-visual artwork, logo-free so the chrome above can scale. */
+function KeyVisualBackdrop() {
   return (
-    <span
-      aria-hidden
-      className="h-4 w-4 animate-spin rounded-full border-2 border-ink-900/30 border-t-ink-900"
-    />
+    <div aria-hidden className="kv-backdrop">
+      <Image
+        src="/brand/participant-bg.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        style={{ objectFit: "cover", objectPosition: "center top" }}
+      />
+    </div>
   );
 }
 
 function SuccessScreen() {
   return (
-    <main className="relative flex min-h-dvh items-center justify-center bg-ink-900 px-6">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_35%,rgba(224,180,92,0.18),transparent_70%)]"
-      />
-      <div className="fade-up relative w-full max-w-sm text-center">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-gold-400/40 bg-gold-400/10">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            className="h-9 w-9 text-gold-300"
-            aria-hidden
-          >
-            <path
-              d="M4.5 12.5 9.5 17.5 19.5 7"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+    <main className="kv-screen">
+      <KeyVisualBackdrop />
+      <div className="kv-shell kv-shell-center">
+        <div className="fade-up text-center">
+          <div className="kv-tick" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10">
+              <path
+                d="M4.5 12.5 9.5 17.5 19.5 7"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
+          <h1 className="kv-thanks">THANK YOU</h1>
+          <p className="kv-thanks-body">
+            Your answer is in. Look up — it is moving across the main screen
+            right now.
+          </p>
+
+          <div className="mt-[4vh] w-full">
+            <TitleLockup className="mx-auto max-w-[min(78vw,340px)]" />
+          </div>
         </div>
-
-        <h1 className="mt-7 font-display text-2xl font-extrabold text-white">
-          Terima kasih!
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-400">
-          Masukan Anda sudah terkirim dan sedang mengalir di layar utama.
-          Selamat menikmati acara.
-        </p>
-
-        <p className="mt-8 font-display text-xs font-semibold tracking-[0.24em] text-azure-300/80">
-          {eventConfig.name}
-        </p>
       </div>
     </main>
+  );
+}
+
+/* --------------------------- tiny inline icons --------------------------- */
+
+function Spinner() {
+  return <span aria-hidden className="kv-spinner" />;
+}
+
+function BarsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-[55%] w-[55%]">
+      <path
+        d="M5 19V11M12 19V5M19 19v-6"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-[55%] w-[55%]">
+      <path
+        d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4 16.5V20Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PeopleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-[55%] w-[55%]">
+      <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M3 19a6 6 0 0 1 12 0M17 11a3 3 0 1 0-2-5.2M21 19a5.6 5.6 0 0 0-3-4.6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function BulbIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-[55%] w-[55%]">
+      <path
+        d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.4.9 1 .9 1.6V16h5.2v-.5c0-.6.3-1.2.9-1.6A6 6 0 0 0 12 3Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-[55%] w-[55%]">
+      <path
+        d="M21 3 3 10.5l7 2.5 2.5 7L21 3Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-[1.1em] w-[1.1em]">
+      <path
+        d="M5 12h13m-5-5 5 5-5 5"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

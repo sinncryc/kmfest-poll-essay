@@ -25,6 +25,18 @@
 
 :root {
   color-scheme: dark;
+
+  /* Sampled from the real KM FEST 2026 key visual, so anything drawn in CSS
+     sits in the same colour family as the artwork underneath it. */
+  --kv-field: #0a5ba8;
+  --kv-field-deep: #063f7d;
+  --kv-cyan: #7fe3ff;
+  --kv-gold: #ffd275;
+
+  --kv-glass: rgba(7, 47, 101, 0.55);
+  --kv-glass-strong: rgba(6, 38, 84, 0.72);
+  --kv-line: rgba(150, 215, 255, 0.32);
+  --kv-line-soft: rgba(150, 215, 255, 0.16);
 }
 
 html,
@@ -42,14 +54,54 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
-/* Display: ambient background                                         */
+/* Shared helpers                                                      */
 /* ------------------------------------------------------------------ */
 
-/* Color stops sampled directly from the real ASTRA KM FEST 2026 key visual
-   (public/assets/final KV_1-03.jpg — its field reads roughly rgb(1,94,172)
-   to rgb(40,110,180)) and pulled several stops darker so the display keeps
-   its near-black legibility for text and glass cards while the hue itself
-   now genuinely matches the poster instead of a generic neutral navy. */
+.fade-up {
+  animation: fade-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The logos ship with real alpha, so instead of boxing each one in a white
+   chip they get a soft contact shadow that keeps thin dark linework legible
+   straight on the blue field. */
+.brand-mark {
+  filter:
+    drop-shadow(0 2px 10px rgba(2, 18, 44, 0.72))
+    drop-shadow(0 0 18px rgba(3, 24, 54, 0.5));
+}
+
+.live-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+/* Still used by the landing page at "/". */
 .stage-bg {
   position: absolute;
   inset: 0;
@@ -59,42 +111,6 @@ body {
     radial-gradient(90% 80% at 50% 110%, #0f3a6b 0%, transparent 60%),
     linear-gradient(180deg, #050b1e 0%, #081633 50%, #03050f 100%);
 }
-
-.stage-bg::after {
-  content: "";
-  position: absolute;
-  inset: -20%;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(74, 168, 240, 0.14), transparent 40%),
-    radial-gradient(circle at 82% 68%, rgba(143, 208, 255, 0.12), transparent 42%);
-  animation: aurora 26s ease-in-out infinite alternate;
-}
-
-/* Lifted straight from the bottom edge of the real key visual — the
-   compass's own horizon glow, ring/hex marks and dot-grid corner texture —
-   with the flat poster-blue field matted out to transparent (only the
-   highlights kept), so pasting it in just adds real light, not another
-   opaque blue rectangle. Sits fixed at the foot of the screen, screen-
-   blended and dim, so the whole scene visibly matches the finished poster
-   without brightening the display back up to print-poster levels. */
-.stage-horizon {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  width: 100%;
-  aspect-ratio: 2400 / 283;
-  background-image: url("/assets/kv-horizon.png");
-  background-size: cover;
-  background-position: center bottom;
-  background-repeat: no-repeat;
-  mix-blend-mode: screen;
-  opacity: 0.85;
-  pointer-events: none;
-}
-
-/* ------------------------------------------------------------------ */
-/* "Knowledge in Motion" — shared constellation / network motif        */
-/* ------------------------------------------------------------------ */
 
 .constellation-field {
   position: absolute;
@@ -116,553 +132,12 @@ body {
   }
 }
 
-@keyframes aurora {
-  0% {
-    transform: translate3d(-2%, -1%, 0) scale(1);
-  }
-  100% {
-    transform: translate3d(2%, 2%, 0) scale(1.08);
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Poster key-visual accents — used sparingly, on purpose. Only the     */
-/* compass sits on screen at all times, as a near-invisible watermark.  */
-/* The network "hands" and the fiber-optic line only flare in for a few */
-/* seconds right when a fresh AI synthesis is published (see the        */
-/* `pulsing` prop on StageBackground) — the real poster artwork reads   */
-/* as a rare, deliberate moment instead of a permanent collage stacked  */
-/* in the center of the screen.                                        */
-/* ------------------------------------------------------------------ */
-.poster-kompas-wrap {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: min(58vw, 860px);
-  aspect-ratio: 3000 / 1688;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  /* Soft ellipse fade so the layer has no hard rectangular edge, however
-     the source PNG's own alpha channel is cropped by object-fit. */
-  mask-image: radial-gradient(ellipse at 50% 50%, #000 55%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 55%, transparent 100%);
-}
-
-.poster-kompas {
-  position: absolute;
-  inset: 0;
-  opacity: 0.1;
-  transform-origin: 50% 50%;
-  animation: kompas-spin 130s linear infinite;
-  /* Screen blend composites the glow into the navy gradient underneath
-     instead of sitting on top of it as an opaque sticker — dark pixels in
-     the source art vanish and only the glowing linework reads. */
-  mix-blend-mode: screen;
-}
-
-/* Same "keep the unchanged animation name in the list" trick used by
-   .rank-card-updated above — kompas-spin never restarts, the flare is
-   just appended for the duration of the publish pulse. Because opacity on
-   a parent scales its whole subtree, this also brightens the orbit dots
-   nested inside it (below) in sync, for free. */
-.poster-kompas.poster-kompas-flare {
-  animation:
-    kompas-spin 130s linear infinite,
-    kompas-opacity-flare 1500ms ease-out;
-}
-
-/* dot-1 / dot-2 ride inside the same rotating element as the compass, so
-   they swing around it as it turns — "attached to the spinning one" rather
-   than sitting static in a corner. */
-.poster-orbit-dot {
-  position: absolute;
-  aspect-ratio: 1;
-  mix-blend-mode: screen;
-}
-
-.poster-orbit-dot-1 {
-  top: 4%;
-  left: 76%;
-  width: 10%;
-  opacity: 0.55;
-}
-
-.poster-orbit-dot-2 {
-  bottom: 8%;
-  left: 10%;
-  width: 7%;
-  opacity: 0.4;
-}
-
-@keyframes kompas-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes kompas-opacity-flare {
-  0% {
-    opacity: 0.1;
-  }
-  35% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 0.1;
-  }
-}
-
-.poster-burst {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.poster-hand {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: min(30vw, 520px);
-  opacity: 0;
-  /* Same screen-blend trick as the compass — lets the glowing wireframe
-     merge into the background instead of showing a photo-cutout edge. */
-  mix-blend-mode: screen;
-}
-
-.poster-hand-left {
-  left: 0;
-  mask-image: linear-gradient(to right, #000 45%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, #000 45%, transparent 100%);
-}
-
-.poster-hand-right {
-  right: 0;
-  mask-image: linear-gradient(to left, #000 45%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to left, #000 45%, transparent 100%);
-}
-
-.poster-burst-active .poster-hand-left {
-  animation: hand-enter-left 1700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.poster-burst-active .poster-hand-right {
-  animation: hand-enter-right 1700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes hand-enter-left {
-  0% {
-    opacity: 0;
-    transform: translate3d(-8%, 0, 0);
-  }
-  28% {
-    opacity: 0.5;
-    transform: translate3d(0, 0, 0);
-  }
-  70% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(-3%, 0, 0);
-  }
-}
-
-@keyframes hand-enter-right {
-  0% {
-    opacity: 0;
-    transform: translate3d(8%, 0, 0);
-  }
-  28% {
-    opacity: 0.5;
-    transform: translate3d(0, 0, 0);
-  }
-  70% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(3%, 0, 0);
-  }
-}
-
-.poster-fiber-flash {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: clamp(46px, 6vh, 96px);
-  overflow: hidden;
-  opacity: 0;
-  mix-blend-mode: screen;
-}
-
-.poster-burst-active .poster-fiber-flash {
-  animation: fiber-flash 1700ms ease-out;
-}
-
-@keyframes fiber-flash {
-  0% {
-    opacity: 0;
-  }
-  30% {
-    opacity: 0.4;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-.stage-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(143, 208, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(143, 208, 255, 0.045) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: radial-gradient(75% 65% at 50% 50%, #000 25%, transparent 78%);
-}
-
-.particle {
-  position: absolute;
-  border-radius: 9999px;
-  background: rgba(255, 230, 168, 0.55);
-  box-shadow: 0 0 12px 2px rgba(224, 180, 92, 0.35);
-  animation: drift linear infinite;
-  will-change: transform, opacity;
-}
-
-@keyframes drift {
-  0% {
-    transform: translate3d(0, 12vh, 0);
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.75;
-  }
-  88% {
-    opacity: 0.6;
-  }
-  100% {
-    transform: translate3d(0, -112vh, 0);
-    opacity: 0;
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Display: feedback river                                             */
-/* ------------------------------------------------------------------ */
-
-.river-lane {
-  position: absolute;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 20;
-}
-
-.river-item {
-  position: absolute;
-  will-change: transform;
-  animation-timing-function: linear;
-  animation-iteration-count: 1;
-  animation-fill-mode: both;
-}
-
-/* Each item fills the lane on its cross-axis and centres its card with
-   flexbox, so a two-line card can never poke outside the lane. */
-.river-item-h {
-  left: 0;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-}
-
-.river-item-v {
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: center;
-}
-
-/* horizontal: left -> right */
-@keyframes river-flow-right {
-  from {
-    transform: translate3d(calc(-100% - 32px), 0, 0);
-  }
-  to {
-    transform: translate3d(var(--travel), 0, 0);
-  }
-}
-
-/* horizontal: right -> left */
-@keyframes river-flow-left {
-  from {
-    transform: translate3d(var(--travel), 0, 0);
-  }
-  to {
-    transform: translate3d(calc(-100% - 32px), 0, 0);
-  }
-}
-
-/* vertical: top -> bottom */
-@keyframes river-flow-down {
-  from {
-    transform: translate3d(0, calc(-100% - 32px), 0);
-  }
-  to {
-    transform: translate3d(0, var(--travel), 0);
-  }
-}
-
-/* vertical: bottom -> top */
-@keyframes river-flow-up {
-  from {
-    transform: translate3d(0, var(--travel), 0);
-  }
-  to {
-    transform: translate3d(0, calc(-100% - 32px), 0);
-  }
-}
-
-/* The inner card owns opacity/scale/blur so it never fights the transform
-   animation running on .river-item. */
-.river-card {
-  position: relative;
-  isolation: isolate;
-  animation-name: river-breathe;
-  animation-timing-function: ease-in-out;
-  animation-fill-mode: both;
-  will-change: opacity, filter, transform;
-  border-radius: 1.35rem;
-  border: 1px solid rgba(143, 208, 255, 0.18);
-  background: linear-gradient(
-    135deg,
-    rgba(20, 30, 58, 0.68) 0%,
-    rgba(11, 18, 36, 0.55) 100%
-  );
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
-  box-shadow:
-    0 8px 26px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-.river-card-fresh {
-  border-color: rgba(243, 207, 130, 0.55);
-  box-shadow:
-    0 0 0 1px rgba(243, 207, 130, 0.25),
-    0 10px 34px rgba(224, 180, 92, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
-}
-
-/* A newly-arrived card gets its own quick-spinning ring (recycled cards stay
-   calm) — motion doubles as the "this one's new" signal, not just flourish.
-   Same fiber-in-the-ring treatment as .rank-card::after, just quicker —
-   this is the newest, most "alive" moment on screen. */
-.river-card-fresh::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.25px;
-  background:
-    conic-gradient(
-      from var(--border-angle),
-      transparent 0deg,
-      rgba(255, 230, 168, 0.9) 60deg,
-      transparent 150deg,
-      transparent 210deg,
-      rgba(143, 208, 255, 0.5) 300deg,
-      transparent 360deg
-    ),
-    url("/assets/optic-fiber.png");
-  background-size: auto, 320% 320%;
-  background-repeat: no-repeat, no-repeat;
-  background-position: center, 0% 0%;
-  background-blend-mode: screen;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation:
-    border-spin 3.2s linear infinite,
-    fiber-drift 5s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes river-breathe {
-  0% {
-    opacity: 0;
-    filter: blur(7px);
-    transform: scale(0.9);
-  }
-  9% {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
-  }
-  89% {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    filter: blur(7px);
-    transform: scale(0.9);
-  }
-}
-
-/* Soft mask so cards dissolve into the corners instead of clipping hard. */
-.lane-mask-x {
-  mask-image: linear-gradient(90deg, transparent 0, #000 11%, #000 89%, transparent 100%);
-}
-
-.lane-mask-y {
-  mask-image: linear-gradient(180deg, transparent 0, #000 11%, #000 89%, transparent 100%);
-}
-
-/* ------------------------------------------------------------------ */
-/* Display: Top 3 — liquid-glass cards with a moving border            */
-/* ------------------------------------------------------------------ */
-
-/* Lets the conic-gradient ring below rotate smoothly via a plain CSS
-   animation (no JS). Unsupported browsers (older Firefox) just keep a
-   static ring instead of erroring. */
+/* Lets the fresh-answer ring rotate via a plain CSS animation (no JS).
+   Unsupported browsers just keep a static ring instead of erroring. */
 @property --border-angle {
   syntax: "<angle>";
   inherits: false;
   initial-value: 0deg;
-}
-
-.rank-card {
-  position: relative;
-  isolation: isolate;
-  border-radius: 1.5rem;
-  border: 1px solid rgba(143, 208, 255, 0.14);
-  background: linear-gradient(
-    150deg,
-    rgba(17, 26, 49, 0.62) 0%,
-    rgba(7, 11, 23, 0.5) 100%
-  );
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  animation: rank-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* The moving border itself: a conic gradient ring, masked down to just the
-   1.5px edge, rotating on its own custom property. Present on all three
-   cards so "border bergerak" reads as one system, not a one-off flourish.
-   A second background layer — the optic-fiber art, screen-blended under
-   the gradient — rides in the same ring so the "Knowledge in Motion" fiber
-   motif lives right in the moving border instead of being a separate
-   sticker. Its own position drifts on `fiber-drift` while `border-angle`
-   keeps spinning the color sweep; the gradient's position is pinned to
-   `center` in that keyframe so the two motions never fight each other. */
-.rank-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  background:
-    conic-gradient(
-      from var(--border-angle),
-      transparent 0deg,
-      rgba(143, 208, 255, 0.85) 55deg,
-      transparent 130deg,
-      transparent 230deg,
-      rgba(143, 208, 255, 0.45) 300deg,
-      transparent 360deg
-    ),
-    url("/assets/optic-fiber.png");
-  background-size: auto, 320% 320%;
-  background-repeat: no-repeat, no-repeat;
-  background-position: center, 0% 0%;
-  background-blend-mode: screen;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation:
-    border-spin 7s linear infinite,
-    fiber-drift 11s linear infinite;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.rank-card-1 {
-  border-color: rgba(243, 207, 130, 0.42);
-  background: linear-gradient(
-    150deg,
-    rgba(46, 36, 18, 0.68) 0%,
-    rgba(12, 15, 28, 0.58) 62%
-  );
-  box-shadow:
-    0 0 0 1px rgba(243, 207, 130, 0.18),
-    0 30px 80px rgba(224, 180, 92, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-/* Champion gets a brighter, faster ring that weaves gold through the
-   azure — the one card the room's eyes settle on. Re-declares the same
-   fiber layer as .rank-card::after (this rule's own `background` shorthand
-   replaces the whole image list) so the champion keeps the fiber texture
-   too; background-size/position/blend-mode still cascade in from the base
-   rule above since this block doesn't touch them. A single duration value
-   speeds up both the color sweep and the fiber drift together. */
-.rank-card-1::after {
-  background:
-    conic-gradient(
-      from var(--border-angle),
-      transparent 0deg,
-      rgba(255, 230, 168, 0.95) 45deg,
-      rgba(224, 180, 92, 0.5) 90deg,
-      transparent 150deg,
-      transparent 210deg,
-      rgba(143, 208, 255, 0.55) 280deg,
-      transparent 340deg
-    ),
-    url("/assets/optic-fiber.png");
-  animation-duration: 4.5s;
-}
-
-/* Diagonal sheen sweeping across the champion card's surface — a second,
-   subtler layer of motion on top of the rotating border. */
-.rank-card-1::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    120deg,
-    transparent 30%,
-    rgba(255, 230, 168, 0.14) 50%,
-    transparent 70%
-  );
-  background-size: 220% 100%;
-  animation: sheen 6s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@keyframes sheen {
-  from {
-    background-position: 220% 0;
-  }
-  to {
-    background-position: -120% 0;
-  }
 }
 
 @keyframes border-spin {
@@ -671,10 +146,1140 @@ body {
   }
 }
 
-/* Drifts only the optic-fiber background layer of a ring (see
-   .rank-card::after) — the gradient layer's position is repeated as the
-   unchanging keyword `center` in both frames so it never moves, only the
-   fiber texture glides underneath the spinning color sweep. */
+/* ================================================================== */
+/* PARTICIPANT — one fluid layout, no breakpoints                      */
+/* ================================================================== */
+/*
+ * Every size below is a clamp() against viewport units, so the screen
+ * scales continuously from a small phone to a tablet instead of jumping
+ * between fixed breakpoints. That is the whole "autoscaling" requirement:
+ * there is no layout to fall between.
+ */
+
+.kv-screen {
+  position: relative;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background: var(--kv-field-deep);
+}
+
+.kv-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Keeps long-form content readable over the artwork's brighter areas. */
+.kv-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(3, 26, 58, 0.42) 0%,
+    rgba(4, 32, 70, 0.34) 30%,
+    rgba(3, 24, 56, 0.62) 100%
+  );
+}
+
+.kv-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.9rem, 3.4vw, 1.6rem);
+  width: min(100%, 33rem);
+  margin-inline: auto;
+  padding-inline: clamp(0.9rem, 4.4vw, 1.6rem);
+  padding-block: clamp(1rem, 4vw, 2rem)
+    max(clamp(1rem, 4vw, 2rem), env(safe-area-inset-bottom));
+  min-height: 100dvh;
+}
+
+.kv-shell-center {
+  justify-content: center;
+}
+
+.kv-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.7rem, 3vw, 1.2rem);
+}
+
+.kv-title {
+  width: min(86%, 22rem);
+}
+
+.kv-stack {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.85rem, 3.2vw, 1.4rem);
+}
+
+/* ---- glass card ---- */
+
+.kv-card {
+  border-radius: clamp(1rem, 4vw, 1.5rem);
+  border: 1px solid var(--kv-line);
+  background: var(--kv-glass);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow:
+    0 18px 46px rgba(2, 18, 42, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: clamp(0.95rem, 4vw, 1.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.7rem, 2.6vw, 1.05rem);
+}
+
+.kv-card-head {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 2.6vw, 0.9rem);
+}
+
+.kv-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: clamp(2.1rem, 8.6vw, 2.9rem);
+  aspect-ratio: 1;
+  border-radius: clamp(0.55rem, 2.4vw, 0.85rem);
+  border: 1px solid var(--kv-line);
+  background: rgba(20, 96, 170, 0.5);
+  color: var(--kv-cyan);
+}
+
+.kv-badge-sm {
+  width: clamp(1.6rem, 6.4vw, 2.1rem);
+  border-radius: 999px;
+}
+
+.kv-badge-send {
+  color: var(--kv-cyan);
+  border-radius: 999px;
+}
+
+.kv-card-label {
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 4.8vw, 1.45rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--kv-cyan);
+  margin: 0;
+  line-height: 1.05;
+}
+
+.kv-card-question {
+  margin: 0.18rem 0 0;
+  font-size: clamp(0.72rem, 3vw, 0.9rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #dcefff;
+}
+
+.kv-helper {
+  margin: 0;
+  font-size: clamp(0.85rem, 3.6vw, 1rem);
+  line-height: 1.45;
+  color: #eaf5ff;
+}
+
+/* ---- poll options ---- */
+
+.kv-options {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.6rem, 2.6vw, 0.9rem);
+}
+
+.kv-option {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: clamp(0.6rem, 2.8vw, 0.95rem);
+  width: 100%;
+  text-align: left;
+  padding: clamp(0.75rem, 3.2vw, 1.05rem);
+  border-radius: clamp(0.8rem, 3.2vw, 1.15rem);
+  border: 1.5px solid var(--kv-line-soft);
+  background: rgba(9, 56, 116, 0.5);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 220ms ease,
+    background 220ms ease,
+    transform 160ms ease;
+}
+
+.kv-option:active {
+  transform: scale(0.99);
+}
+
+.kv-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.kv-option-key {
+  display: grid;
+  place-items: center;
+  width: clamp(2rem, 8.4vw, 2.6rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(0.95rem, 4vw, 1.2rem);
+  color: #06203f;
+}
+
+.kv-option-a .kv-option-key {
+  background: linear-gradient(180deg, #a9e8ff, #5cc6f5);
+}
+
+.kv-option-b .kv-option-key {
+  background: linear-gradient(180deg, #ffe3a4, #f4c45f);
+}
+
+.kv-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.kv-option-title {
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 4.2vw, 1.2rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+.kv-option-quote {
+  font-size: clamp(0.76rem, 3.2vw, 0.92rem);
+  line-height: 1.4;
+  color: #cfe8ff;
+}
+
+.kv-radio {
+  flex: none;
+  width: clamp(1.15rem, 4.6vw, 1.45rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 2px solid rgba(198, 232, 255, 0.7);
+  background: transparent;
+  transition: box-shadow 200ms ease, background 200ms ease;
+}
+
+.kv-option-a.is-active {
+  border-color: #7fd8ff;
+  background: rgba(24, 116, 196, 0.62);
+  box-shadow: 0 0 0 1px rgba(127, 216, 255, 0.5), 0 10px 26px rgba(20, 120, 200, 0.3);
+}
+
+.kv-option-b.is-active {
+  border-color: var(--kv-gold);
+  background: rgba(92, 70, 22, 0.42);
+  box-shadow: 0 0 0 1px rgba(255, 210, 117, 0.45), 0 10px 26px rgba(190, 140, 40, 0.24);
+}
+
+.kv-option.is-active .kv-radio {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 4px rgba(11, 66, 130, 0.95);
+}
+
+.kv-footnote {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 2.4vw, 0.8rem);
+  font-size: clamp(0.72rem, 3vw, 0.86rem);
+  line-height: 1.4;
+  color: #cfe8ff;
+}
+
+.kv-footnote strong {
+  color: var(--kv-cyan);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 0.92em;
+}
+
+/* ---- essay ---- */
+
+.kv-prompt {
+  display: block;
+  margin: 0;
+  font-size: clamp(0.85rem, 3.6vw, 1rem);
+  line-height: 1.5;
+  color: #eaf5ff;
+}
+
+.kv-field {
+  position: relative;
+}
+
+.kv-textarea {
+  width: 100%;
+  resize: none;
+  border-radius: clamp(0.7rem, 3vw, 1rem);
+  border: 1.5px solid var(--kv-line-soft);
+  background: rgba(4, 34, 74, 0.62);
+  padding: clamp(0.75rem, 3.2vw, 1rem);
+  padding-bottom: clamp(1.7rem, 6.4vw, 2.1rem);
+  font: inherit;
+  font-size: clamp(0.9rem, 3.8vw, 1.02rem);
+  line-height: 1.5;
+  color: #ffffff;
+  outline: none;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.kv-textarea::placeholder {
+  color: rgba(190, 222, 250, 0.55);
+}
+
+.kv-textarea:focus {
+  border-color: #7fd8ff;
+  box-shadow: 0 0 0 4px rgba(127, 216, 255, 0.16);
+}
+
+.kv-counter {
+  position: absolute;
+  right: clamp(0.6rem, 2.6vw, 0.9rem);
+  bottom: clamp(0.5rem, 2.2vw, 0.75rem);
+  font-size: clamp(0.68rem, 2.8vw, 0.8rem);
+  color: rgba(190, 222, 250, 0.7);
+}
+
+.kv-counter.is-warn {
+  color: var(--kv-gold);
+}
+
+.kv-hint {
+  margin: 0;
+  font-size: clamp(0.7rem, 3vw, 0.82rem);
+  color: var(--kv-gold);
+}
+
+.kv-error {
+  margin: 0;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 138, 138, 0.4);
+  background: rgba(120, 20, 20, 0.35);
+  padding: clamp(0.6rem, 2.6vw, 0.85rem) clamp(0.75rem, 3vw, 1rem);
+  font-size: clamp(0.78rem, 3.2vw, 0.9rem);
+  color: #ffd9d9;
+}
+
+.kv-submit-row {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 2.8vw, 0.95rem);
+}
+
+.kv-submit-row .kv-badge {
+  border-color: rgba(150, 215, 255, 0.45);
+}
+
+.kv-submit {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: clamp(2.9rem, 12vw, 3.5rem);
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(100deg, #2fa8ec 0%, #1f7fd4 55%, #5ccdf5 100%);
+  font-family: var(--font-display);
+  font-size: clamp(0.92rem, 4vw, 1.1rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(20, 110, 190, 0.38);
+  transition: transform 160ms ease, filter 200ms ease;
+}
+
+.kv-submit:active {
+  transform: scale(0.985);
+}
+
+.kv-submit:disabled {
+  cursor: not-allowed;
+  background: rgba(10, 48, 96, 0.75);
+  color: rgba(197, 223, 247, 0.55);
+  box-shadow: none;
+}
+
+.kv-spinner {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  animation: spin 720ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.kv-motto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: clamp(0.4rem, 2.4vw, 0.9rem);
+  padding-top: clamp(0.3rem, 2vw, 0.8rem);
+  font-family: var(--font-display);
+  font-size: clamp(0.6rem, 2.6vw, 0.76rem);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: rgba(190, 226, 255, 0.75);
+}
+
+.kv-motto i {
+  font-style: normal;
+  margin-right: clamp(0.4rem, 2.4vw, 0.9rem);
+  color: rgba(190, 226, 255, 0.45);
+}
+
+/* ---- thank-you ---- */
+
+.kv-tick {
+  margin-inline: auto;
+  display: grid;
+  place-items: center;
+  width: clamp(4rem, 22vw, 5.5rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(150, 215, 255, 0.45);
+  background: rgba(20, 96, 170, 0.42);
+  color: var(--kv-cyan);
+}
+
+.kv-thanks {
+  margin: clamp(1.2rem, 5vw, 1.8rem) 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 8vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ffffff;
+}
+
+.kv-thanks-body {
+  margin: clamp(0.6rem, 2.6vw, 0.9rem) auto 0;
+  max-width: 24rem;
+  font-size: clamp(0.86rem, 3.6vw, 1rem);
+  line-height: 1.55;
+  color: #cfe8ff;
+}
+
+/* ================================================================== */
+/* DISPLAY — projector screen                                          */
+/* ================================================================== */
+/*
+ * The outer band of the screen is reserved for the live answer river; all
+ * branding and panels live inside `--river-*`. This is why the logos and the
+ * title were lifted out of the background artwork — they can now be sized
+ * down and inset, which is what frees that ring.
+ */
+
+.stage {
+  --river-x: clamp(9rem, 12.5vw, 17rem);
+  --river-y: clamp(2.6rem, 6vh, 4.8rem);
+
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--kv-field-deep);
+}
+
+.stage-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.stage-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 90% at 50% 55%,
+    rgba(3, 26, 60, 0.34) 0%,
+    rgba(3, 22, 52, 0.62) 100%
+  );
+}
+
+.stage-inner {
+  position: absolute;
+  inset: var(--river-y) var(--river-x);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.4vh, 1.1rem);
+}
+
+.stage-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.35rem, 1.2vh, 0.9rem);
+}
+
+.stage-title {
+  width: min(38%, 30rem);
+}
+
+.stage-panels {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: clamp(0.7rem, 1.6vw, 1.5rem);
+}
+
+.stage-motto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.5rem, 1.4vw, 1.1rem);
+  font-family: var(--font-display);
+  font-size: clamp(0.52rem, 0.78vw, 0.86rem);
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: rgba(196, 230, 255, 0.72);
+}
+
+.stage-motto i {
+  font-style: normal;
+  margin-right: clamp(0.5rem, 1.4vw, 1.1rem);
+  color: rgba(196, 230, 255, 0.4);
+}
+
+.stage-status,
+.stage-fullscreen {
+  position: absolute;
+  bottom: clamp(0.4rem, 1.1vh, 0.9rem);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(160, 210, 250, 0.22);
+  background: rgba(4, 28, 62, 0.55);
+  padding: 0.35rem 0.8rem;
+  font-size: clamp(0.5rem, 0.62vw, 0.68rem);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(198, 228, 255, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.stage-status {
+  right: clamp(0.5rem, 1vw, 1rem);
+}
+
+.stage-fullscreen {
+  left: clamp(0.5rem, 1vw, 1rem);
+  cursor: pointer;
+  transition: opacity 700ms ease;
+}
+
+/* ---- glass panels ---- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.45rem, 1.2vh, 0.95rem);
+  min-height: 0;
+  border-radius: clamp(0.9rem, 1.4vw, 1.6rem);
+  border: 1px solid var(--kv-line);
+  background: var(--kv-glass);
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  box-shadow:
+    0 24px 60px rgba(2, 16, 40, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+  padding: clamp(0.7rem, 1.5vw, 1.5rem);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 0.9vw, 0.9rem);
+}
+
+.panel-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: clamp(1.7rem, 2.5vw, 3rem);
+  aspect-ratio: 1;
+  border-radius: clamp(0.45rem, 0.7vw, 0.8rem);
+  border: 1px solid var(--kv-line);
+  background: rgba(20, 96, 170, 0.5);
+  color: var(--kv-cyan);
+}
+
+.panel-badge-sm {
+  width: clamp(1.3rem, 1.9vw, 2.2rem);
+  border-radius: 999px;
+}
+
+.panel-eyebrow {
+  margin: 0;
+  font-size: clamp(0.45rem, 0.62vw, 0.7rem);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: rgba(160, 214, 255, 0.8);
+}
+
+.panel-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 1.5vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  line-height: 1.05;
+}
+
+.panel-question {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(0.85rem, 1.35vw, 1.6rem);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.panel-question-accent {
+  color: var(--kv-cyan);
+}
+
+.panel-subquestion {
+  margin: 0;
+  font-size: clamp(0.62rem, 0.86vw, 1rem);
+  color: rgba(206, 233, 255, 0.85);
+}
+
+.panel-waiting {
+  margin: 0;
+  font-size: clamp(0.62rem, 0.85vw, 0.95rem);
+  color: rgba(190, 222, 250, 0.6);
+}
+
+.panel-total {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.4rem, 0.8vw, 0.8rem);
+  margin-top: auto;
+  padding-top: clamp(0.3rem, 0.8vh, 0.7rem);
+}
+
+.panel-total-label {
+  display: block;
+  font-size: clamp(0.44rem, 0.6vw, 0.68rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(160, 214, 255, 0.8);
+}
+
+.panel-total-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(0.9rem, 1.4vw, 1.7rem);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+/* ---- poll rows ---- */
+
+.poll-rows {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.45rem, 1.1vh, 0.9rem);
+}
+
+/* Rows share whatever height the panel has, so the card reads as a filled
+   block rather than content stranded above a gap. */
+.poll-row {
+  flex: 1;
+}
+
+.poll-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(0.5rem, 0.9vw, 0.95rem);
+  border-radius: clamp(0.7rem, 1.1vw, 1.2rem);
+  border: 1.5px solid var(--kv-line-soft);
+  background: rgba(9, 56, 116, 0.46);
+  padding: clamp(0.55rem, 1.1vw, 1.05rem);
+}
+
+.poll-row-a {
+  border-color: rgba(127, 216, 255, 0.45);
+}
+
+.poll-row-b {
+  border-color: rgba(255, 210, 117, 0.45);
+  background: rgba(58, 46, 18, 0.36);
+}
+
+.poll-key {
+  display: grid;
+  place-items: center;
+  width: clamp(1.6rem, 2.4vw, 2.9rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(0.8rem, 1.2vw, 1.4rem);
+  color: #06203f;
+}
+
+.poll-row-a .poll-key {
+  background: linear-gradient(180deg, #a9e8ff, #5cc6f5);
+}
+
+.poll-row-b .poll-key {
+  background: linear-gradient(180deg, #ffe3a4, #f4c45f);
+}
+
+.poll-body {
+  min-width: 0;
+}
+
+.poll-option-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(0.78rem, 1.15vw, 1.35rem);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.15;
+}
+
+.poll-option-quote {
+  margin: 0.18rem 0 0;
+  font-size: clamp(0.56rem, 0.78vw, 0.92rem);
+  line-height: 1.35;
+  color: rgba(206, 233, 255, 0.85);
+}
+
+.poll-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  width: clamp(4.5rem, 8vw, 9rem);
+}
+
+.poll-percent {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2vw, 2.4rem);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.poll-bar,
+.concern-bar {
+  display: block;
+  width: 100%;
+  height: clamp(0.35rem, 0.55vw, 0.6rem);
+  border-radius: 999px;
+  background: rgba(6, 32, 70, 0.6);
+  overflow: hidden;
+}
+
+.poll-bar-fill,
+.concern-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.poll-row-a .poll-bar-fill {
+  background: linear-gradient(90deg, #5cc6f5, #a9e8ff);
+}
+
+.poll-row-b .poll-bar-fill {
+  background: linear-gradient(90deg, #e0b45c, #ffe3a4);
+}
+
+/* ---- essay panel ---- */
+
+.panel-wide {
+  min-width: 0;
+}
+
+.essay-split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.46fr);
+  gap: clamp(0.6rem, 1.2vw, 1.4rem);
+}
+
+.essay-main {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.35rem, 0.9vh, 0.7rem);
+  min-width: 0;
+}
+
+.concern-list {
+  flex: 1;
+  min-height: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.35rem, 0.9vh, 0.75rem);
+}
+
+.concern {
+  flex: 1;
+}
+
+.concern {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(0.45rem, 0.9vw, 0.9rem);
+  border-radius: clamp(0.6rem, 0.95vw, 1rem);
+  border: 1px solid var(--kv-line-soft);
+  background: rgba(9, 56, 116, 0.42);
+  padding: clamp(0.4rem, 0.85vw, 0.8rem) clamp(0.5rem, 1vw, 0.95rem);
+}
+
+.concern-rank {
+  display: grid;
+  place-items: center;
+  width: clamp(1.3rem, 1.9vw, 2.2rem);
+  aspect-ratio: 1;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(0.6rem, 0.9vw, 1.05rem);
+  color: #06203f;
+  background: linear-gradient(180deg, #a9e8ff, #5cc6f5);
+}
+
+/* Each rank gets its own hue, the way the key visual steps through the
+   palette — keeps five rows readable at a glance from the back of a hall. */
+.concern-2 .concern-rank {
+  background: linear-gradient(180deg, #9ff0dc, #4fc9ab);
+}
+.concern-3 .concern-rank {
+  background: linear-gradient(180deg, #c3b8ff, #8d7bf0);
+}
+.concern-4 .concern-rank {
+  background: linear-gradient(180deg, #ffc2dd, #f083b4);
+}
+.concern-5 .concern-rank {
+  background: linear-gradient(180deg, #ffe3a4, #f4c45f);
+}
+
+.concern-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.concern-title {
+  margin: 0;
+  font-size: clamp(0.62rem, 0.92vw, 1.1rem);
+  font-weight: 600;
+  color: #ffffff;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.concern-bar-fill {
+  background: linear-gradient(90deg, #5cc6f5, #a9e8ff);
+}
+.concern-2 .concern-bar-fill {
+  background: linear-gradient(90deg, #4fc9ab, #9ff0dc);
+}
+.concern-3 .concern-bar-fill {
+  background: linear-gradient(90deg, #8d7bf0, #c3b8ff);
+}
+.concern-4 .concern-bar-fill {
+  background: linear-gradient(90deg, #f083b4, #ffc2dd);
+}
+.concern-5 .concern-bar-fill {
+  background: linear-gradient(90deg, #f4c45f, #ffe3a4);
+}
+
+.concern-percent {
+  font-family: var(--font-display);
+  font-size: clamp(0.72rem, 1.15vw, 1.35rem);
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+/* ---- quotes column ---- */
+
+.essay-quotes {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.35rem, 0.9vh, 0.7rem);
+  min-width: 0;
+  border-left: 1px solid var(--kv-line-soft);
+  padding-left: clamp(0.5rem, 1.1vw, 1.2rem);
+}
+
+.quotes-heading {
+  margin: 0;
+  font-size: clamp(0.45rem, 0.62vw, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  line-height: 1.35;
+  color: rgba(160, 214, 255, 0.85);
+}
+
+.quotes-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.35rem, 0.9vh, 0.7rem);
+  min-height: 0;
+}
+
+
+.quote-card {
+  position: relative;
+  margin: 0;
+  border-radius: clamp(0.5rem, 0.85vw, 0.95rem);
+  border: 1px solid var(--kv-line-soft);
+  background: rgba(9, 56, 116, 0.42);
+  padding: clamp(0.4rem, 0.8vw, 0.8rem) clamp(0.45rem, 0.9vw, 0.85rem)
+    clamp(0.4rem, 0.8vw, 0.8rem) clamp(1.2rem, 2vw, 1.9rem);
+}
+
+.quote-card p {
+  margin: 0;
+  font-size: clamp(0.55rem, 0.78vw, 0.92rem);
+  line-height: 1.4;
+  color: #e6f3ff;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.quote-mark {
+  position: absolute;
+  left: clamp(0.4rem, 0.75vw, 0.75rem);
+  top: clamp(0.1rem, 0.4vw, 0.35rem);
+  font-family: var(--font-display);
+  font-size: clamp(0.9rem, 1.5vw, 1.8rem);
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(127, 216, 255, 0.75);
+}
+
+/* ================================================================== */
+/* BORDER RIVER — live answers circling the edge                       */
+/* ================================================================== */
+
+.river-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.river-lane {
+  position: absolute;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.river-track,
+.river-card {
+  box-sizing: border-box;
+}
+
+.river-lane-top,
+.river-lane-bottom {
+  left: 0;
+  right: 0;
+  height: var(--river-y);
+  /* Fade each end so cards dissolve into the corners instead of clipping. */
+  mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+}
+
+.river-lane-top {
+  top: 0;
+}
+
+.river-lane-bottom {
+  bottom: 0;
+}
+
+.river-lane-left,
+.river-lane-right {
+  top: var(--river-y);
+  bottom: var(--river-y);
+  width: var(--river-x);
+  mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+}
+
+.river-lane-left {
+  left: 0;
+}
+
+.river-lane-right {
+  right: 0;
+}
+
+.river-track {
+  display: flex;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.river-track-x {
+  flex-direction: row;
+  align-items: center;
+  width: max-content;
+  height: 100%;
+  gap: clamp(0.5rem, 1.1vw, 1.2rem);
+  padding-inline: clamp(0.5rem, 1.1vw, 1.2rem);
+  animation-name: river-x;
+}
+
+.river-track-y {
+  flex-direction: column;
+  height: max-content;
+  width: 100%;
+  gap: clamp(0.4rem, 0.9vh, 0.9rem);
+  padding-block: clamp(0.4rem, 0.9vh, 0.9rem);
+  padding-inline: clamp(0.4rem, 0.8vw, 0.9rem);
+  animation-name: river-y;
+}
+
+/* Each lane renders its items twice, so translating by exactly half the
+   track length lands the second copy where the first began — a seamless
+   loop with no gap and no possibility of two cards overlapping. */
+@keyframes river-x {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes river-y {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
+.river-card {
+  position: relative;
+  isolation: isolate;
+  margin: 0;
+  flex: none;
+  border-radius: 999px;
+  border: 1px solid var(--kv-line-soft);
+  background: rgba(6, 40, 86, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: clamp(0.3rem, 0.55vw, 0.6rem) clamp(0.65rem, 1.1vw, 1.15rem);
+  font-size: clamp(0.55rem, 0.75vw, 0.9rem);
+  line-height: 1.35;
+  color: #dceeff;
+}
+
+.river-track-x .river-card {
+  max-width: clamp(14rem, 24vw, 30rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.river-track-y .river-card {
+  border-radius: clamp(0.6rem, 1vw, 1.1rem);
+  padding: clamp(0.4rem, 0.75vw, 0.8rem) clamp(0.5rem, 0.9vw, 0.95rem);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* A just-arrived answer gets the spinning ring — the same conic-gradient +
+   optic-fiber treatment the cards carried before, kept so a new message
+   still announces itself as it joins the ring. */
+.river-card.is-fresh {
+  border-color: rgba(255, 226, 160, 0.55);
+  color: #ffffff;
+}
+
+.river-card.is-fresh::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background:
+    conic-gradient(
+      from var(--border-angle),
+      transparent 0deg,
+      rgba(255, 230, 168, 0.95) 55deg,
+      transparent 140deg,
+      transparent 220deg,
+      rgba(143, 208, 255, 0.7) 300deg,
+      transparent 360deg
+    ),
+    url("/assets/optic-fiber.png");
+  background-size: auto, 320% 320%;
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, 0% 0%;
+  background-blend-mode: screen;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation:
+    border-spin 3.4s linear infinite,
+    fiber-drift 6s linear infinite;
+  pointer-events: none;
+}
+
+/* Drifts only the optic-fiber layer; the gradient's position is repeated as
+   the unchanging keyword `center` so the two motions never fight. */
 @keyframes fiber-drift {
   from {
     background-position: center, 0% 0%;
@@ -684,220 +1289,27 @@ body {
   }
 }
 
-@keyframes rank-enter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 26px, 0) scale(0.97);
-    filter: blur(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: blur(0);
-  }
-}
-
-/* Brief "just published" glow — the ring speeds up and the whole card
-   bounces once, cueing that the AI synthesis behind it just refreshed. */
-@keyframes card-pulse {
-  0% {
-    transform: scale(1);
-    filter: brightness(1);
-  }
-  35% {
-    transform: scale(1.028);
-    filter: brightness(1.3);
-  }
-  100% {
-    transform: scale(1);
-    filter: brightness(1);
-  }
-}
-
-/* Adds card-pulse alongside rank-enter rather than replacing the `animation`
-   shorthand outright — rank-enter's name stays in the list so its already
-   finished, filled end-state is left alone instead of restarting (which
-   would otherwise flash the card back to its invisible/blurred 0% frame
-   every time this class is removed again). */
-.rank-card-updated {
-  animation:
-    rank-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    card-pulse 900ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.rank-card-updated::after {
-  animation-duration: 1.1s;
-}
-
-/* Keep the header/content above the champion sheen and the border ring —
-   both are position:absolute inside an isolated stacking context. */
-.rank-card > header,
-.rank-card > .content-swap {
-  position: relative;
-  z-index: 2;
-}
-
-/* Content-only crossfade for a publish: title/count/summary swap in place
-   without the card, medal or border remounting. */
-@keyframes content-swap {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-    filter: blur(5px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: blur(0);
-  }
-}
-
-.content-swap {
-  animation: content-swap 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* One-shot light sweep across the whole Top 3 zone when a new synthesis
-   lands, plus the small "DIPERBARUI" badge underneath the headline. */
-@keyframes sync-sweep-move {
-  0% {
-    transform: translate3d(-130%, 0, 0);
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  88% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate3d(130%, 0, 0);
-    opacity: 0;
-  }
-}
-
-.sync-sweep {
-  position: absolute;
-  inset: -4vh -2vw;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.sync-sweep::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  width: 42%;
-  background: linear-gradient(
-    100deg,
-    transparent,
-    rgba(143, 208, 255, 0.16) 45%,
-    rgba(255, 230, 168, 0.12) 55%,
-    transparent
-  );
-  filter: blur(6px);
-  animation: sync-sweep-move 1300ms ease-in-out both;
-}
-
-@keyframes badge-pop {
-  0% {
-    opacity: 0;
-    transform: translate3d(-50%, 4px, 0);
-  }
-  18% {
-    opacity: 1;
-    transform: translate3d(-50%, 0, 0);
-  }
-  78% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
-.update-badge {
-  animation: badge-pop 1400ms ease-out both;
-}
-
-.headline-glow {
-  text-shadow:
-    0 0 18px rgba(143, 208, 255, 0.25),
-    0 0 60px rgba(31, 120, 209, 0.2);
-}
-
-/* Astra + Satu Indonesia lockups (see src/components/brand/event-logos.tsx)
-   sit on their own white chip since both source marks ship on white. */
-/* Both logo PNGs have real transparent backgrounds — no white box needed.
-   A soft dark contact-shadow plus a faint white halo keeps thin dark
-   linework (Satu Indonesia's outline strokes) readable against the navy
-   field without boxing the mark in, which read as pasted rather than part
-   of the scene. */
-.brand-mark {
-  filter:
-    drop-shadow(0 2px 8px rgba(4, 6, 13, 0.5))
-    drop-shadow(0 0 16px rgba(255, 255, 255, 0.22));
-}
-
-.gold-text {
-  background: linear-gradient(180deg, #ffe6a8 0%, #e0b45c 55%, #b98c39 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-@keyframes pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
-  }
-  50% {
-    opacity: 0.7;
-    box-shadow: 0 0 0 7px rgba(74, 222, 128, 0);
-  }
-}
-
-.live-dot {
-  animation: pulse-dot 2.2s ease-in-out infinite;
-}
-
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 14px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.fade-up {
-  animation: fade-up 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+/* ------------------------------------------------------------------ */
+/* Reduced motion                                                      */
+/* ------------------------------------------------------------------ */
 
 @media (prefers-reduced-motion: reduce) {
-  .particle,
-  .stage-bg::after,
   .constellation-field,
-  .rank-card-1::before,
-  .rank-card::after,
-  .rank-card-updated,
-  .river-card-fresh::after,
-  .sync-sweep::after,
-  .update-badge,
-  .content-swap,
+  .river-track,
+  .river-card.is-fresh::after,
   .live-dot,
-  .poster-kompas,
-  .poster-burst-active .poster-hand-left,
-  .poster-burst-active .poster-hand-right,
-  .poster-burst-active .poster-fiber-flash {
+  .fade-up,
+  .kv-spinner {
     animation: none !important;
   }
 
-  .rank-card-updated {
-    transform: none !important;
+  .fade-up {
+    opacity: 1;
+    transform: none;
+  }
+
+  .poll-bar-fill,
+  .concern-bar-fill {
+    transition: none;
   }
 }

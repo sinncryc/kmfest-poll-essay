@@ -1,44 +1,61 @@
 import Image from "next/image";
 
 /**
- * Sponsor lockup for the "Knowledge in Motion" design concept — mirrors the
- * ASTRA KM FEST 2026 poster's top bar (Astra on the left, Satu Indonesia on
- * the right). Both source PNGs actually have transparent backgrounds (no
- * baked-in white square), so they sit directly on the dark navy field —
- * `.brand-mark`'s soft drop-shadow glow keeps thin dark linework (like Satu
- * Indonesia's outline strokes) readable without boxing each logo in a
- * white chip, which read as pasted-on rather than part of the scene.
+ * The three-mark lockup from the KM FEST 2026 key visual: ASTRA on the left,
+ * "70 TAHUN ASTRA" in the middle, Satu Indonesia on the right.
+ *
+ * These used to be baked into the background artwork. They are separate
+ * elements now so the display can render them small and pulled inward,
+ * leaving the outer edge of the screen free for the live answer river to
+ * circle without ever colliding with the branding. All three PNGs carry real
+ * alpha, so they sit straight on the blue field; `.brand-mark`'s soft
+ * drop-shadow keeps thin dark linework readable without a white chip.
  */
 export default function EventLogos({
   className = "",
   size = "md",
 }: {
   className?: string;
-  size?: "sm" | "md";
+  /** sm = participant phone, md = default, lg = projector */
+  size?: "sm" | "md" | "lg";
 }) {
-  const markHeight = size === "sm" ? "h-8" : "h-10";
-  const astraWidth = size === "sm" ? 108 : 140;
-  const satuWidth = size === "sm" ? 72 : 94;
+  const scale = size === "sm" ? 0.78 : size === "lg" ? 1.15 : 1;
+
+  const astra = Math.round(132 * scale);
+  const seventy = Math.round(46 * scale);
+  const satu = Math.round(92 * scale);
 
   return (
-    <div className={`flex items-center justify-between gap-3 ${className}`}>
-      <span className={`brand-mark flex items-center ${markHeight}`}>
+    <div className={`flex w-full items-center justify-between gap-3 ${className}`}>
+      <span className="brand-mark flex items-center">
         <Image
           src="/logos/astra-logo.png"
           alt="Astra International"
-          width={astraWidth}
-          height={astraWidth / 3.54}
-          className="h-full w-auto object-contain"
+          width={astra}
+          height={Math.round(astra / 3.54)}
+          style={{ width: astra, height: "auto" }}
           priority
         />
       </span>
-      <span className={`brand-mark flex items-center ${markHeight}`}>
+
+      <span className="brand-mark flex items-center">
+        <Image
+          src="/brand/logo-70.png"
+          alt="70 Tahun Astra"
+          width={Math.round(seventy * 1.1)}
+          height={seventy}
+          style={{ height: seventy, width: "auto" }}
+          priority
+        />
+      </span>
+
+      <span className="brand-mark flex items-center">
         <Image
           src="/logos/satu-indonesia-logo.png"
           alt="Satu Indonesia — Semangat Astra Terpadu Untuk Indonesia"
-          width={satuWidth}
-          height={satuWidth / 2.04}
-          className="h-full w-auto object-contain"
+          width={satu}
+          height={Math.round(satu / 2.04)}
+          style={{ width: satu, height: "auto" }}
         />
       </span>
     </div>
