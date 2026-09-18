@@ -17,36 +17,42 @@ export const eventConfig = {
   /** The three-beat motto that closes both the participant and display screens. */
   motto: ["BE BRAVE", "BE RESPONSIBLE", "BE AI READY"] as const,
 
-  /** Part 1: a two-way vote. Percentages of this drive the left display panel. */
+  /**
+   * Part 1: a two-way vote framed as the "Rangga" scenario — full backstory
+   * lives in the printed notebook at the venue, not in the app. `helper`
+   * doubles as the small italic pointer to that notebook (`.kv-helper` in
+   * globals.css is restyled italic/small for this copy).
+   * Percentages of this drive the left display panel.
+   */
   poll: {
     label: "POLL",
-    question: "WHICH SIDE ARE YOU ON?",
-    helper: "Choose the option that best represents your view.",
-    footnoteTitle: "YOUR VOTE MATTERS",
-    footnoteBody: "Help shape the conversation.",
+    question: "IF YOU ARE RANGGA, WHAT WOULD YOU DO?",
+    helper: "(For the complete scenario, please refer to the notebook.)",
+    footnoteTitle: "SHARE YOUR THOUGHTS",
+    footnoteBody: "See what other people would choose — live on the big screen!",
     options: [
       {
         key: "A",
-        title: "USE AI NOW",
+        title: "USE AI FIRST",
         quote:
-          "AI doesn't have to be perfect to be useful. Use it, verify it, improve it.",
+          "He could use AI first, then check it and make it better. But once he sees AI's idea, he might not think of his own idea anymore.",
       },
       {
         key: "B",
-        title: "UNDERSTAND FIRST",
+        title: "THINK FIRST",
         quote:
-          "AI can create value, but we need to understand its limitations before relying on it.",
+          "Or he could think first, then use AI to test and improve his idea. But he might arrive at the 6 PM meeting with an idea that is not finished yet.",
       },
     ],
   },
 
-  /** Part 2: one free-text concern. The AI clusters these into the top concerns. */
+  /** Part 2: the reasoning behind the poll choice. The AI clusters these into the top concerns. */
   essay: {
     label: "ESSAY",
-    question: "WHAT WOULD MAKE YOU HESITATE?",
+    question: "WHAT'S YOUR REASONING?",
     prompt:
       process.env.NEXT_PUBLIC_EVENT_QUESTION ??
-      "Regardless of which side you chose, what is ONE concern you would want addressed before using AI in this situation?",
+      "What's your reasoning behind that choice?",
     placeholder: "Type your answer here…",
     footnote: "Be honest, be thoughtful, be part of the bigger picture.",
     /** Shown under the submit button — no name or account is ever attached to an answer. */
