@@ -27,7 +27,7 @@ export const eventConfig = {
   poll: {
     label: "POLL",
     question: "IF YOU ARE RANGGA, WHAT WOULD YOU DO?",
-    helper: "(For the complete scenario, please refer to the notebook.)",
+    helper: "For the complete scenario, please refer to the notebook.",
     footnoteTitle: "SHARE YOUR THOUGHTS",
     footnoteBody: "See what other people would choose — live on the big screen!",
     options: [
