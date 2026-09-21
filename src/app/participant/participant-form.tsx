@@ -13,7 +13,7 @@ import type { PollChoice } from "@/lib/types";
 
 type Status = "idle" | "submitting" | "success";
 
-const { poll, essay, motto } = eventConfig;
+const { poll, essay } = eventConfig;
 
 /**
  * The participant screen, built to the approved Participant key visual: the
@@ -212,15 +212,6 @@ export default function ParticipantForm() {
             </div>
           </section>
         </form>
-
-        <footer className="kv-motto">
-          {motto.map((word, index) => (
-            <span key={word}>
-              {index > 0 ? <i aria-hidden>•</i> : null}
-              {word}
-            </span>
-          ))}
-        </footer>
       </div>
     </main>
   );
