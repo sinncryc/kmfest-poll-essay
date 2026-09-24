@@ -23,8 +23,8 @@ export default function SummaryBoxes({
 
   return (
     <>
-      <OptionBox option="A" pct={pctA} votes={poll.a} data={summary.A} />
-      <OptionBox option="B" pct={pctB} votes={poll.b} data={summary.B} />
+      <OptionBox option="A" pct={pctA} data={summary.A} />
+      <OptionBox option="B" pct={pctB} data={summary.B} />
 
       <section className="side">
         <div className="side-cols">
@@ -32,9 +32,10 @@ export default function SummaryBoxes({
           <SideColumn option="B" data={summary.B} />
         </div>
         <div className="kmfest">
-          <div className="kmfest-label">{copy.kmfestLabel}</div>
           <p>
-            {copy.kmfestLead} <em>{copy.kmfestAccent}</em>
+            <span className="kmfest-label">{copy.kmfestLabel}</span>
+            {copy.kmfestLead} <span className="kmfest-a">{copy.kmfestA}</span>{" "}
+            <span className="kmfest-b">{copy.kmfestB}</span> <em>{copy.kmfestClose}</em>
           </p>
         </div>
       </section>
@@ -45,12 +46,10 @@ export default function SummaryBoxes({
 function OptionBox({
   option,
   pct,
-  votes,
   data,
 }: {
   option: PollChoice;
   pct: number;
-  votes: number;
   data: OptionSummary;
 }) {
   return (
@@ -62,7 +61,6 @@ function OptionBox({
           <div className="opt-bar-fill" style={{ width: `${pct}%` }} />
         </div>
         <span className="opt-pct">{pct}%</span>
-        <span className="opt-votes">{votes} votes</span>
       </div>
       <div className="opt-cards">
         {[0, 1, 2].map((i) => {
@@ -71,6 +69,7 @@ function OptionBox({
           return (
             <div key={i} className={`card ${insight ? "card-insight" : ""}`}>
               <div className="card-label">
+                <span className="card-num">{i + 1}</span>
                 {insight ? <Spark /> : null}
                 <span>{item?.title ?? "—"}</span>
                 {insight ? <span className="card-tag">{copy.insightTag}</span> : null}

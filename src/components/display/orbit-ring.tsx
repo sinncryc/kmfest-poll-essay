@@ -15,7 +15,7 @@ import type { RiverSource } from "./use-display-data";
  * the bottom (both upright) and fades between them mid-side. The pill shape
  * never fades — only text does, also when a new answer replaces it.
  */
-const PILLS = 16;
+const PILLS = 22;
 const LOOP_SECONDS = 45;
 const BATCH_MS = 10_000;
 const SWAP_MS = 800;
@@ -27,9 +27,9 @@ const PAD = 370;
 const SIDE = 358;
 const MID_R = 2999;
 const MID_L = 6177;
-const HEAD_GAP = 26;
-const TEXT_W = Math.round(MAX_CH * 8.2);
-const PILL_LEN = HEAD_GAP + TEXT_W + 12;
+const HEAD_GAP = 20;
+const TEXT_W = Math.round(MAX_CH * 6.9);
+const PILL_LEN = HEAD_GAP + TEXT_W + 8;
 const LOOP: [number, number][] = [[30, 151], [2850, 151], [2850, 509], [30, 509], [30, 151]];
 const LOOP_D = "M 30 151 L 2850 151 L 2850 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 30 509";
 const UP_D = "M 400 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 2480 509";
@@ -147,7 +147,7 @@ export default function OrbitRing({ pool }: { pool: RiverSource[] }) {
         const [fx, fy] = at(h + 30);
         const [bx, by] = at(h - 30);
         const ang = (Math.atan2(fy - by, fx - bx) * 180) / Math.PI;
-        p.head.setAttribute("transform", `translate(${x} ${y}) rotate(${ang}) scale(0.4) translate(-62 -53)`);
+        p.head.setAttribute("transform", `translate(${x} ${y}) rotate(${ang}) scale(0.3) translate(-62 -53)`);
         // text order: up-old, up-new, down-old, down-new
         p.texts[0].style.opacity = String(up * old);
         p.texts[1].style.opacity = String(up * fresh);
@@ -178,9 +178,9 @@ export default function OrbitRing({ pool }: { pool: RiverSource[] }) {
         const prev = slot.prev || placeholder;
         return (
           <g key={i} data-pill="">
-            <path d={LOOP_D} fill="none" stroke="rgba(40,150,255,0.14)" strokeWidth={46} strokeLinecap="round" strokeDasharray={dash} />
-            <path d={LOOP_D} fill="none" stroke="rgba(127,212,255,0.35)" strokeWidth={36} strokeLinecap="round" strokeDasharray={dash} />
-            <path d={LOOP_D} fill="none" stroke="#03408a" strokeWidth={34} strokeLinecap="round" strokeDasharray={dash} />
+            <path d={LOOP_D} fill="none" stroke="rgba(40,150,255,0.14)" strokeWidth={34} strokeLinecap="round" strokeDasharray={dash} />
+            <path d={LOOP_D} fill="none" stroke="rgba(127,212,255,0.35)" strokeWidth={27} strokeLinecap="round" strokeDasharray={dash} />
+            <path d={LOOP_D} fill="none" stroke="#03408a" strokeWidth={25} strokeLinecap="round" strokeDasharray={dash} />
             <image href="/brand/compass-head.png" width={230} height={108} />
             <text textAnchor="start" style={{ opacity: 0 }}>
               <textPath href="#orbit-lane-up">{prev}</textPath>
