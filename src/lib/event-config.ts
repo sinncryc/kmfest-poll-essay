@@ -63,7 +63,6 @@ export const eventConfig = {
     /** Shown in an orbiting pill until an answer fills it. */
     pillPlaceholder: "Scan the QR and share yours",
     waiting: "Waiting for answers…",
-    kmfestLabel: "KM FEST",
     // Rendered as one paragraph; the A and B sentences take their option colour.
     kmfestLead:
       "There is no right or wrong answer. This is about speed or accuracy, not who's smarter, just a different priority.",

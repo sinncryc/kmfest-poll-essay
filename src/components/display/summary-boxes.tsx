@@ -33,7 +33,6 @@ export default function SummaryBoxes({
         </div>
         <div className="kmfest">
           <p>
-            <span className="kmfest-label">{copy.kmfestLabel}</span>
             {copy.kmfestLead} <span className="kmfest-a">{copy.kmfestA}</span>{" "}
             <span className="kmfest-b">{copy.kmfestB}</span> <em>{copy.kmfestClose}</em>
           </p>
