@@ -18,7 +18,7 @@ create table if not exists public.feedback (
 );
 
 comment on column public.feedback.poll_choice is
-  'A = USE AI NOW, B = UNDERSTAND FIRST — the vote submitted with this answer.';
+  'A = USE AI FIRST, B = THINK FIRST — the vote submitted with this answer.';
 comment on column public.feedback.session_id is
   'Opaque random id from an httpOnly cookie. Not linked to any person.';
 comment on column public.feedback.is_visible is
@@ -31,10 +31,10 @@ create index if not exists feedback_created_at_idx
 create index if not exists feedback_poll_choice_idx
   on public.feedback (poll_choice);
 
--- Up to five rows, one per rank. The admin "Update Display" action (and the
+-- Ten rows, one per display card (slots in src/lib/summary-schema.ts). The
 -- auto-summarize cron) upsert on rank, which is what /display listens to.
 create table if not exists public.ai_summary (
-  rank       smallint    primary key check (rank between 1 and 5),
+  rank       smallint    primary key check (rank between 1 and 10),
   title      text        not null,
   count      integer     not null default 0,
   summary    text        not null,

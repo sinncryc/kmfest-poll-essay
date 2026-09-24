@@ -17,12 +17,12 @@ export type PollResults = {
 };
 
 /**
- * One clustered theme from the audience's essay answers. Up to 5 of these
- * fill the display's right-hand panel; `count` is how many answers the AI
- * put in this theme, which the display renders as a percentage.
+ * One card of the AI summary. `rank` is the slot (1–10) — see
+ * summary-schema.ts for which card each slot is. `title` is the category (or
+ * the AI's own label for an insight card), `summary` the sentence shown.
  */
 export type ConcernItem = {
-  rank: 1 | 2 | 3 | 4 | 5;
+  rank: number;
   title: string;
   count: number;
   summary: string;

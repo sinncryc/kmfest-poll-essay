@@ -30,7 +30,6 @@ const EMPTY_POLL: PollResults = { a: 0, b: 0, total: 0 };
 
 export function useDisplayData() {
   const [pool, setPool] = useState<RiverSource[]>([]);
-  const [freshIds, setFreshIds] = useState<number[]>([]);
   const [poll, setPoll] = useState<PollResults>(EMPTY_POLL);
   const [concerns, setConcerns] = useState<ConcernItem[]>([]);
   const [concernsUpdatedAt, setConcernsUpdatedAt] = useState<string | null>(null);
@@ -43,21 +42,16 @@ export function useDisplayData() {
 
   const seenRef = useRef<Set<number>>(new Set());
 
-  const ingest = useCallback((items: RiverSource[], asNew: boolean) => {
+  const ingest = useCallback((items: RiverSource[]) => {
     const fresh = items.filter((item) => !seenRef.current.has(item.id));
     if (fresh.length === 0) return;
     for (const item of fresh) seenRef.current.add(item.id);
 
     setPool((prev) => [...fresh, ...prev].slice(0, POOL_LIMIT));
-    if (asNew) {
-      // "Fresh" only drives the highlight ring; keep the list short so the
-      // whole border does not light up at once during a burst of answers.
-      setFreshIds((prev) => [...fresh.map((f) => f.id), ...prev].slice(0, 8));
-    }
   }, []);
 
   const applySnapshot = useCallback(
-    (state: DisplayState, treatAsNew: boolean) => {
+    (state: DisplayState) => {
       setPoll(state.poll ?? EMPTY_POLL);
       setConcerns(state.concerns ?? []);
       setConcernsUpdatedAt(state.concernsUpdatedAt);
@@ -69,7 +63,6 @@ export function useDisplayData() {
           .slice()
           .reverse()
           .map((f) => ({ id: f.id, text: f.text })),
-        treatAsNew,
       );
       setReady(true);
     },
@@ -77,11 +70,11 @@ export function useDisplayData() {
   );
 
   const fetchSnapshot = useCallback(
-    async (treatAsNew: boolean) => {
+    async () => {
       try {
         const response = await fetch("/api/display-state", { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        applySnapshot((await response.json()) as DisplayState, treatAsNew);
+        applySnapshot((await response.json()) as DisplayState);
         return true;
       } catch (error) {
         console.error("[display] snapshot failed", error);
@@ -95,7 +88,7 @@ export function useDisplayData() {
   useEffect(() => {
     // Data loading: state is set from the async response, not synchronously.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void fetchSnapshot(false);
+    void fetchSnapshot();
   }, [fetchSnapshot]);
 
   /* Realtime (Supabase) or polling fallback -------------------------- */
@@ -103,7 +96,7 @@ export function useDisplayData() {
     const client = supabaseEnabled ? getBrowserClient() : null;
 
     if (!client) {
-      const timer = setInterval(() => void fetchSnapshot(true), POLL_INTERVAL_MS);
+      const timer = setInterval(() => void fetchSnapshot(), POLL_INTERVAL_MS);
       return () => clearInterval(timer);
     }
 
@@ -125,7 +118,7 @@ export function useDisplayData() {
           };
           if (typeof row?.id !== "number" || typeof row?.message !== "string") return;
 
-          ingest([{ id: row.id, text: row.message }], true);
+          ingest([{ id: row.id, text: row.message }]);
           setTotal((value) => value + 1);
           // Move the bar immediately rather than waiting for the next resync —
           // the vote is the thing the room is watching.
@@ -145,14 +138,14 @@ export function useDisplayData() {
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "feedback" },
         () => {
-          void fetchSnapshot(false);
+          void fetchSnapshot();
         },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "ai_summary" },
         () => {
-          void fetchSnapshot(false);
+          void fetchSnapshot();
         },
       )
       .subscribe((status) => {
@@ -163,7 +156,7 @@ export function useDisplayData() {
 
     // Safety net: even with a healthy socket, resync occasionally so a
     // missed event never leaves the big screen stale during an event.
-    const resync = setInterval(() => void fetchSnapshot(true), RESYNC_INTERVAL_MS);
+    const resync = setInterval(() => void fetchSnapshot(), RESYNC_INTERVAL_MS);
 
     return () => {
       clearInterval(resync);
@@ -173,7 +166,6 @@ export function useDisplayData() {
 
   return {
     pool,
-    freshIds,
     poll,
     concerns,
     concernsUpdatedAt,

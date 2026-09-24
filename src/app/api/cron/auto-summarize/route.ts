@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cronSecretMatches } from "@/lib/auth";
-import { buildAiPrompt } from "@/lib/ai-prompt";
+import { AI_RESPONSE_SCHEMA, buildAiPrompt } from "@/lib/ai-prompt";
 import { countFeedback, listFeedback, setConcerns } from "@/lib/store";
 import { validateAiResult } from "@/lib/validation";
 import type { ExportPayload } from "@/lib/types";
@@ -52,6 +52,15 @@ type GeminiAttempt =
  * Deliberately modest: the scheduler comes back every 5 minutes anyway, so
  * this only needs to outlast a short spike, not guarantee an answer. Two
  * attempts per model across three models fits well inside `maxDuration`.
+ *
+ * `temperature: 0` (+ `seed`) is here to reduce run-to-run wording drift in
+ * the free-text "summary" field. It is NOT what makes the concern list
+ * itself stable — Google's own docs call `seed` "best-effort" repeatability,
+ * not a guarantee, and community reports show Gemini can still vary output
+ * even with temperature and seed both pinned. The real fix for "the AI
+ * summary keeps changing" is the fixed category lists in
+ * summary-schema.ts, pinned here as enums in `responseSchema`: the model can
+ * only pick from titles that never change instead of inventing new ones.
  */
 async function askGemini(prompt: string, apiKey: string): Promise<GeminiAttempt> {
   const tried: string[] = [];
@@ -69,7 +78,13 @@ async function askGemini(prompt: string, apiKey: string): Promise<GeminiAttempt>
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: "application/json" },
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: AI_RESPONSE_SCHEMA,
+              temperature: 0,
+              topP: 1,
+              seed: 1,
+            },
           }),
         });
       } catch (error) {
@@ -135,7 +150,7 @@ function extractText(data: GeminiResponse): string | null {
  * Automatic replacement for the manual "copy prompt into ChatGPT/Gemini,
  * paste JSON back" flow in /admin — called on a timer by an external cron
  * (cron-job.org / GitHub Actions, since Vercel's free-tier Cron only runs
- * daily) so Top 3 refreshes itself every few minutes with zero operator
+ * daily) so the display summary refreshes itself every few minutes with zero operator
  * action, per the user's request. Auto-publishes straight to the display —
  * no human review step, by explicit choice, since this is low-stakes
  * internal employee feedback, not anything that needs gatekeeping.

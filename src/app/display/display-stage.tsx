@@ -1,64 +1,36 @@
 "use client";
 
-import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import EventLogos from "@/components/brand/event-logos";
-import TitleLockup from "@/components/brand/title-lockup";
-import BorderRiver from "@/components/display/border-river";
-import { ConcernsPanel, PollPanel } from "@/components/display/display-panels";
+import { useCallback, useEffect, useState } from "react";
+import OrbitRing from "@/components/display/orbit-ring";
+import SummaryBoxes from "@/components/display/summary-boxes";
 import { useDisplayData } from "@/components/display/use-display-data";
-import { eventConfig } from "@/lib/event-config";
+
+const STRIP_W = 2880;
+const STRIP_H = 538;
 
 /**
- * The projector screen.
- *
- * Layout follows the approved Display key visual — poll on the left, essay
- * results plus a sample of raw answers on the right — but sits on the
- * *background* artwork rather than the mockup's darker plate, per the brief.
- *
- * The outer band of the screen belongs to the live answer river; every piece
- * of branding is inset from it, which is exactly why the logos and title were
- * lifted out of the background PNG: at this size they can be scaled down and
- * pulled inward, leaving a clean ring for participant input to circle.
+ * The LED strip. The artwork (logos, title, the three glass boxes) is one
+ * 2880×538 background; the live parts sit on top at the same px positions and
+ * the whole strip is scaled as one piece to fit the screen, so layout and the
+ * measured text limits hold at any resolution.
  */
 export default function DisplayStage() {
-  const {
-    pool,
-    freshIds,
-    poll,
-    concerns,
-    total,
-    connection,
-    demoMode,
-    ready,
-  } = useDisplayData();
+  const { pool, poll, concerns, connection, demoMode } = useDisplayData();
 
+  const [scale, setScale] = useState(1);
   const [controlsVisible, setControlsVisible] = useState(true);
-  // The connection badge isn't part of the approved key visual — it's an
-  // operator aid for confirming realtime is actually live before doors open.
-  // Hidden by default so the public screen matches the mockup exactly; add
-  // ?debug=1 to the URL during setup/rehearsal to see it.
+  // Operator aid, not part of the key visual: add ?debug=1 to see it.
   const [showDebug, setShowDebug] = useState(false);
 
-  /**
-   * Newest answers first, shown verbatim beside the AI's clustering.
-   *
-   * Sorted by id rather than trusting the pool's order: the pool is seeded
-   * oldest-first from the snapshot but prepends live arrivals, so slicing it
-   * raw showed the *oldest* answers until someone submitted again.
-   *
-   * This is a candidate list, not the number that appears — how many fit
-   * depends on how long the answers are, so the panel itself drops the ones
-   * that would overflow. Sending a few more than could ever fit means a
-   * column of one-line answers fills right down to the bottom.
-   */
-  const quotes = useMemo(
-    () => [...pool].sort((a, b) => b.id - a.id).slice(0, 16),
-    [pool],
-  );
-
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowDebug(new URLSearchParams(window.location.search).has("debug"));
+    const fitStrip = () =>
+      setScale(Math.min(window.innerWidth / STRIP_W, window.innerHeight / STRIP_H));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fitStrip();
+    window.addEventListener("resize", fitStrip);
+    return () => window.removeEventListener("resize", fitStrip);
   }, []);
 
   // Controls fade away so the screen needs no operator during the event.
@@ -83,42 +55,12 @@ export default function DisplayStage() {
   }, []);
 
   return (
-    <main className="stage">
-      <div aria-hidden className="stage-backdrop">
-        <Image
-          src="/brand/display-bg.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          style={{ objectFit: "cover" }}
-        />
+    <main className="strip-viewport">
+      <div className="strip" style={{ "--strip-scale": scale } as React.CSSProperties}>
+        <SummaryBoxes poll={poll} concerns={concerns} />
+        <OrbitRing pool={pool} />
       </div>
 
-      <BorderRiver pool={pool} freshIds={freshIds} />
-
-      <div className="stage-inner">
-        <header className="stage-head">
-          <EventLogos size="lg" />
-          <TitleLockup className="stage-title" />
-        </header>
-
-        <div className="stage-panels">
-          <PollPanel results={poll} />
-          <ConcernsPanel concerns={concerns} quotes={quotes} total={ready ? total : 0} />
-        </div>
-
-        <footer className="stage-motto">
-          {eventConfig.motto.map((word, index) => (
-            <span key={word}>
-              {index > 0 ? <i aria-hidden>•</i> : null}
-              {word}
-            </span>
-          ))}
-        </footer>
-      </div>
-
-      {/* Status corner — operator-only, see ?debug=1 note above */}
       {showDebug ? (
         <div className="stage-status">
           <span

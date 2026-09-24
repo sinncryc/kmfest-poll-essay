@@ -1,4 +1,5 @@
 import { ESSAY_MAX_LENGTH, ESSAY_MIN_LENGTH, POLL_KEYS } from "./event-config";
+import { allowedTitles, SLOT_COUNT, slotOf, TEXT_LIMITS, textLimit } from "./summary-schema";
 import type { AiResultPayload, ConcernItem, PollChoice } from "./types";
 
 export type Validated<T> =
@@ -37,74 +38,96 @@ export function validatePollChoice(raw: unknown): Validated<PollChoice> {
   return { ok: true, value: raw as PollChoice };
 }
 
-const MIN_CONCERNS = 3;
-const MAX_CONCERNS = 5;
+type Obj = Record<string, unknown>;
+const isObj = (v: unknown): v is Obj => v !== null && typeof v === "object" && !Array.isArray(v);
+const str = (v: unknown) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "");
 
 /**
- * Validates the JSON coming back from the AI — whether an operator pasted it
- * by hand in /admin or the auto-summarize cron fetched it from Gemini.
+ * The AI's own shape (see ai-prompt.ts), flattened into the ten table rows.
+ * `{ "A": { "top": [2], "insight": {}, "pro": {}, "con": {} }, "B": … }`
+ */
+function toRows(raw: Obj): unknown[] | null {
+  const rows: unknown[] = [];
+  const base = { A: 0, B: 3 } as const;
+  const side = { A: 7, B: 9 } as const;
+  for (const option of POLL_KEYS) {
+    const o = raw[option];
+    if (!isObj(o)) return null;
+    const top = Array.isArray(o.top) ? o.top : [];
+    const insight = isObj(o.insight) ? o.insight : {};
+    top.slice(0, 2).forEach((t, i) => {
+      const item = isObj(t) ? t : {};
+      rows.push({ rank: base[option] + i + 1, title: item.category, count: item.count, summary: item.text });
+    });
+    rows.push({ rank: base[option] + 3, title: insight.label, count: insight.count, summary: insight.text });
+    for (const [key, offset] of [["pro", 0], ["con", 1]] as const) {
+      const item = isObj(o[key]) ? (o[key] as Obj) : {};
+      rows.push({ rank: side[option] + offset, title: item.category, count: 0, summary: item.text });
+    }
+  }
+  return rows;
+}
+
+/**
+ * Validates the AI summary — pasted by hand in /admin or fetched by the
+ * auto-summarize cron. Accepts the AI's A/B shape or the ten stored rows
+ * (what /admin re-posts after previewing).
  *
- * Nothing reaches the projector without passing this, which matters more now
- * that the cron publishes with no human in the loop: a malformed or
- * over-long answer is rejected and the previous, good summary stays up.
+ * Nothing reaches the projector without passing this: wrong categories or
+ * text that would not fit its card are rejected and the previous, good
+ * summary stays on screen.
  */
 export function validateAiResult(raw: unknown): Validated<AiResultPayload> {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { ok: false, error: 'JSON must be an object with a "concerns" key.' };
-  }
+  if (!isObj(raw)) return { ok: false, error: 'JSON must be an object with "A" and "B" keys.' };
 
-  const record = raw as Record<string, unknown>;
-  // Tolerate the older "top_3" key so a previously copied prompt still works.
-  const list = record.concerns ?? record.top_3;
-
-  if (!Array.isArray(list)) {
-    return { ok: false, error: '"concerns" is missing or is not an array.' };
-  }
-  if (list.length < MIN_CONCERNS || list.length > MAX_CONCERNS) {
-    return {
-      ok: false,
-      error: `"concerns" must hold ${MIN_CONCERNS}–${MAX_CONCERNS} items (found ${list.length}).`,
-    };
+  const list = Array.isArray(raw.concerns) ? raw.concerns : toRows(raw);
+  if (!list) return { ok: false, error: 'JSON must have "A" and "B" objects (or a "concerns" array).' };
+  if (list.length !== SLOT_COUNT) {
+    return { ok: false, error: `Expected ${SLOT_COUNT} cards, found ${list.length}. Each option needs 2 "top", 1 "insight", 1 "pro", 1 "con".` };
   }
 
   const items: ConcernItem[] = [];
-  const seenRanks = new Set<number>();
+  const seen = new Set<number>();
 
-  for (let i = 0; i < list.length; i += 1) {
-    const label = `Item ${i + 1}`;
-    const item = list[i];
-    if (item === null || typeof item !== "object" || Array.isArray(item)) {
-      return { ok: false, error: `${label} is not an object.` };
-    }
-    const obj = item as Record<string, unknown>;
-
+  for (const entry of list) {
+    const obj = isObj(entry) ? entry : {};
     const rank = Number(obj.rank);
-    if (!Number.isInteger(rank) || rank < 1 || rank > MAX_CONCERNS) {
-      return { ok: false, error: `${label}: "rank" must be between 1 and ${MAX_CONCERNS}.` };
+    if (!Number.isInteger(rank) || rank < 1 || rank > SLOT_COUNT || seen.has(rank)) {
+      return { ok: false, error: `Invalid or duplicate slot ${String(obj.rank)}.` };
     }
-    if (seenRanks.has(rank)) {
-      return { ok: false, error: `Rank ${rank} appears more than once.` };
-    }
-    seenRanks.add(rank);
+    seen.add(rank);
+    const { option, kind } = slotOf(rank);
+    const label = `Option ${option} ${kind}`;
 
-    const title = typeof obj.title === "string" ? obj.title.trim() : "";
-    if (!title) return { ok: false, error: `${label}: "title" is required.` };
-    if (title.length > 60) {
-      return { ok: false, error: `${label}: "title" must be 60 characters or fewer.` };
+    let title = str(obj.title);
+    const allowed = allowedTitles(rank);
+    if (allowed) {
+      const match = allowed.find((t) => t.toLowerCase() === title.toLowerCase());
+      if (!match) return { ok: false, error: `${label}: "${title}" is not one of: ${allowed.join(", ")}.` };
+      title = match;
+    } else {
+      const [min, max] = TEXT_LIMITS.insightLabel.accept;
+      if (title.length < min || title.length > max) {
+        return { ok: false, error: `${label}: label must be ${min}–${max} characters.` };
+      }
     }
 
-    const summary = typeof obj.summary === "string" ? obj.summary.trim() : "";
-    if (!summary) return { ok: false, error: `${label}: "summary" is required.` };
-    if (summary.length > 220) {
-      return { ok: false, error: `${label}: "summary" must be 220 characters or fewer.` };
+    const summary = str(obj.summary);
+    const [min, max] = textLimit(rank);
+    if (summary.length < min || summary.length > max) {
+      return { ok: false, error: `${label}: text is ${summary.length} characters, must be ${min}–${max} to fit its card.` };
     }
 
     const count = Number(obj.count ?? 0);
-    if (!Number.isInteger(count) || count < 0) {
-      return { ok: false, error: `${label}: "count" must be a whole number ≥ 0.` };
-    }
+    items.push({ rank, title, count: Number.isInteger(count) && count >= 0 ? count : 0, summary });
+  }
 
-    items.push({ rank: rank as ConcernItem["rank"], title, count, summary });
+  // Two category cards of one option must not repeat the same category.
+  for (const [a, b] of [[1, 2], [4, 5]]) {
+    const ta = items.find((i) => i.rank === a)?.title;
+    if (ta && ta === items.find((i) => i.rank === b)?.title) {
+      return { ok: false, error: `Option ${a === 1 ? "A" : "B"} uses "${ta}" twice.` };
+    }
   }
 
   items.sort((a, b) => a.rank - b.rank);

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { eventConfig } from "@/lib/event-config";
-import { AI_PROMPT } from "@/lib/ai-prompt";
+import { AI_PROMPT, CATEGORY_PROMPT } from "@/lib/ai-prompt";
+import { slotOf } from "@/lib/summary-schema";
 import type { ConcernItem, PollResults } from "@/lib/types";
 import { validateAiResult } from "@/lib/validation";
 import EventLogos from "@/components/brand/event-logos";
@@ -162,7 +163,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [resetState, setResetState] = useState<
     { kind: "idle" } | { kind: "busy" } | { kind: "ok" } | { kind: "error"; message: string }
   >({ kind: "idle" });
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"summary" | "categories" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const loadStats = useCallback(async () => {
@@ -242,15 +243,15 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     }
   }
 
-  async function copyPrompt() {
+  async function copyPrompt(prompt: string, which: "summary" | "categories") {
     try {
       const response = await fetch("/api/admin/export", { cache: "no-store" });
       const json = await response.text();
-      await navigator.clipboard.writeText(AI_PROMPT + json);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      await navigator.clipboard.writeText(prompt + json);
+      setCopied(which);
+      setTimeout(() => setCopied(null), 2500);
     } catch {
-      setCopied(false);
+      setCopied(null);
     }
   }
 
@@ -261,7 +262,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   async function resetAll() {
     const confirmed = window.confirm(
-      "Yakin hapus SEMUA feedback dan Top 3 yang sedang tayang di layar? Tindakan ini tidak bisa dibatalkan.",
+      "Yakin hapus SEMUA feedback dan ringkasan AI yang sedang tayang di layar? Tindakan ini tidak bisa dibatalkan.",
     );
     if (!confirmed) return;
 
@@ -369,10 +370,17 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </a>
           <button
             type="button"
-            onClick={copyPrompt}
+            onClick={() => copyPrompt(AI_PROMPT, "summary")}
             className="rounded-xl border border-ink-500 px-4 py-2.5 text-xs font-bold text-slate-200 hover:border-azure-400/60"
           >
-            {copied ? "Tersalin ✓" : "Salin prompt + data"}
+            {copied === "summary" ? "Tersalin ✓" : "Salin prompt + data"}
+          </button>
+          <button
+            type="button"
+            onClick={() => copyPrompt(CATEGORY_PROMPT, "categories")}
+            className="rounded-xl border border-ink-500 px-4 py-2.5 text-xs font-bold text-slate-200 hover:border-azure-400/60"
+          >
+            {copied === "categories" ? "Tersalin ✓" : "Salin prompt review kategori"}
           </button>
         </div>
       </Panel>
@@ -389,7 +397,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           onChange={(event) => parse(event.target.value)}
           rows={7}
           spellCheck={false}
-          placeholder='{ "concerns": [ { "rank": 1, "title": "…", "count": 32, "summary": "…" }, … ] }'
+          placeholder='{ "A": { "top": [ … ], "insight": { … }, "pro": { … }, "con": { … } }, "B": { … } }'
           className="mt-4 w-full rounded-xl border border-ink-500 bg-ink-900 p-4 font-mono text-xs leading-relaxed text-slate-200 outline-none focus:border-azure-400/70"
         />
 
@@ -430,14 +438,14 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       <Panel step="3" title="Preview & update display">
         {preview ? (
           <>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {preview.map((item) => (
                 <div
                   key={item.rank}
                   className="rounded-xl border border-ink-500 bg-ink-800/70 p-4"
                 >
                   <p className="text-[0.6rem] font-bold tracking-[0.24em] text-gold-400">
-                    RANK {item.rank}
+                    {slotLabel(item.rank)}
                   </p>
                   <p className="mt-2 font-display text-sm font-bold text-white">
                     {item.title}
@@ -463,7 +471,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
             {stats?.canPublish === false ? (
               <p className="mt-3 text-xs text-amber-300">
-                SUPABASE_SERVICE_ROLE_KEY belum di-set di server, jadi Top 3
+                SUPABASE_SERVICE_ROLE_KEY belum di-set di server, jadi ringkasan AI
                 belum bisa dipublikasikan.
               </p>
             ) : null}
@@ -492,7 +500,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             <ul className="mt-2 space-y-1 text-xs text-slate-400">
               {stats.concerns.map((item) => (
                 <li key={item.rank}>
-                  <span className="text-slate-200">#{item.rank} {item.title}</span>{" "}
+                  <span className="text-slate-200">{slotLabel(item.rank)} · {item.title}</span>{" "}
                   · {item.count} responses
                 </li>
               ))}
@@ -511,7 +519,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           Reset data
         </h2>
         <p className="mt-3 text-xs leading-relaxed text-slate-400">
-          Menghapus semua feedback yang masuk dan Top 3 yang sedang tayang.
+          Menghapus semua feedback yang masuk dan ringkasan AI yang sedang tayang.
           Pakai ini di antara sesi uji coba, atau tepat sebelum acara mulai
           supaya layar dan hitungan mulai dari nol.{" "}
           <strong className="text-red-300">Tidak bisa dibatalkan.</strong>
@@ -576,4 +584,10 @@ function Panel({
       <div className="mt-3">{children}</div>
     </section>
   );
+}
+
+/** "A · INSIGHT" style label for a summary slot in the admin preview. */
+function slotLabel(rank: number) {
+  const { option, kind } = slotOf(rank);
+  return `${option} · ${kind.toUpperCase()}`;
 }

@@ -14,9 +14,6 @@ export const eventConfig = {
   /** Short subtitle. */
   tagline: process.env.NEXT_PUBLIC_EVENT_TAGLINE ?? "Knowledge in Motion",
 
-  /** The three-beat motto that closes both the participant and display screens. */
-  motto: ["BE BRAVE", "BE RESPONSIBLE", "BE AI READY"] as const,
-
   /**
    * Part 1: a two-way vote framed as the "Rangga" scenario — full backstory
    * lives in the printed notebook at the venue, not in the app. `helper`
@@ -59,12 +56,17 @@ export const eventConfig = {
     disclaimer: "This will be anonymous.",
   },
 
-  /** Headings on the big screen. */
+  /** Copy on the big screen (the AI cards themselves come from the summary). */
   display: {
-    liveLabel: "LIVE RESULTS",
-    concernsSubheading: "Top concerns from the audience",
-    quotesHeading: "SOME OF YOUR ANSWERS",
-    totalLabel: "TOTAL RESPONSES",
+    /** Shown in an orbiting pill until an answer fills it. */
+    pillPlaceholder: "Scan the QR and share yours",
+    /** Small tag on the one card per option the AI writes freely. */
+    insightTag: "AI INSIGHT",
+    waiting: "Waiting for answers…",
+    kmfestLabel: "KM FEST",
+    kmfestLead:
+      "There is no right or wrong answer. The best work uses both: let AI make you faster, but keep your own judgment in charge.",
+    kmfestAccent: "AI can help you think, but it should never think for you.",
   },
 } as const;
 
