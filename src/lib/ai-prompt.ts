@@ -39,9 +39,9 @@ TASK — do this separately for option A and option B:
 ${list(REASON_CATEGORIES.A)}
    Option B reason categories:
 ${list(REASON_CATEGORIES.B)}
-   "text": one sentence that sums up what those answers actually say, ${rMin}–${rMax} characters.
+   "text": one short sentence that sums up what those answers actually say, ${rMin}–${rMax} characters (it is shown on ONE line, no title).
 
-2. "insight": ONE fresh insight you synthesize yourself from that option's answers — something real and specific that the two "top" categories do not already cover (a surprising angle, a shared condition, a recurring nuance). Give it your own short "label" (${lMin}–${lMax} characters, Title Case, not one of the category names) and a "text" of ${rMin}–${rMax} characters. "count" = how many answers support it.
+2. "insight": ONE fresh insight you synthesize yourself from that option's answers — something real and specific that the two "top" categories do not already cover (a surprising angle, a shared condition, a recurring nuance). Give it your own short "label" (${lMin}–${lMax} characters, Title Case, not one of the category names; used only for the operator) and a one-line "text" of ${rMin}–${rMax} characters. "count" = how many answers support it.
 
 3. "pro" and "con": the strongest advantage and the strongest risk of that option, drawn from ALL answers (people who chose the other option often name the risks). Pick "category" from these fixed lists and write "text" as one full sentence of ${pMin}–${pMax} characters.
    Pro categories:

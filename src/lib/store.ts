@@ -1,5 +1,6 @@
 import "server-only";
 
+import { eventConfig } from "./event-config";
 import {
   getAdminClient,
   getServerClient,
@@ -17,6 +18,8 @@ import type {
 /** How much recent feedback the display seeds its border river with. */
 export const RIVER_SEED_LIMIT = 120;
 
+const DEFAULT_LOOP_SECONDS = eventConfig.display.pillSpeed.default;
+
 /* ------------------------------------------------------------------ */
 /* In-memory demo store                                                */
 /* ------------------------------------------------------------------ */
@@ -31,6 +34,7 @@ type DemoStore = {
   nextId: number;
   concerns: ConcernItem[];
   concernsUpdatedAt: string | null;
+  loopSeconds: number;
 };
 
 const globalForDemo = globalThis as unknown as { __afDemoStore?: DemoStore };
@@ -41,6 +45,7 @@ function demo(): DemoStore {
     nextId: 1,
     concerns: [],
     concernsUpdatedAt: null,
+    loopSeconds: DEFAULT_LOOP_SECONDS,
   };
   return globalForDemo.__afDemoStore;
 }
@@ -234,6 +239,36 @@ export async function setConcerns(items: ConcernItem[]): Promise<string> {
 }
 
 /**
+ * Pill speed lives in a one-row `display_settings` table (see
+ * supabase/migration-display-speed.sql). If that table is missing the display
+ * just runs at the default speed rather than failing.
+ */
+export async function getLoopSeconds(): Promise<number> {
+  if (usingDemoStore()) return demo().loopSeconds;
+  const { data, error } = await readClient()
+    .from("display_settings")
+    .select("loop_seconds")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error || !data) return DEFAULT_LOOP_SECONDS;
+  return data.loop_seconds as number;
+}
+
+export async function setLoopSeconds(seconds: number): Promise<void> {
+  if (usingDemoStore()) {
+    demo().loopSeconds = seconds;
+    return;
+  }
+  if (!hasServiceRole()) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set on the server.");
+  }
+  const { error } = await getAdminClient()
+    .from("display_settings")
+    .upsert({ id: 1, loop_seconds: seconds, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
+}
+
+/**
  * Wipes ALL feedback and the published results. For clearing trial-and-error
  * data between test runs — or right before the real event so the audience
  * screen starts from zero. Destructive and irreversible; the calling route
@@ -271,11 +306,12 @@ export async function resetAllData(): Promise<void> {
 }
 
 export async function getDisplayState(): Promise<DisplayState> {
-  const [rows, concerns, total, poll] = await Promise.all([
+  const [rows, concerns, total, poll, loopSeconds] = await Promise.all([
     listFeedback({ limit: RIVER_SEED_LIMIT, onlyVisible: true }),
     getConcerns(),
     countFeedback(),
     countPoll(),
+    getLoopSeconds(),
   ]);
 
   return {
@@ -288,6 +324,7 @@ export async function getDisplayState(): Promise<DisplayState> {
     concerns: concerns.items,
     concernsUpdatedAt: concerns.updatedAt,
     totalResponses: total,
+    loopSeconds,
     demoMode: usingDemoStore(),
   };
 }

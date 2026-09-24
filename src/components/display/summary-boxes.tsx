@@ -65,15 +65,9 @@ function OptionBox({
       <div className="opt-cards">
         {[0, 1, 2].map((i) => {
           const item = data.reasons[i];
-          const insight = i === 2;
           return (
-            <div key={i} className={`card ${insight ? "card-insight" : ""}`}>
-              <div className="card-label">
-                <span className="card-num">{i + 1}</span>
-                {insight ? <Spark /> : null}
-                <span>{item?.title ?? "—"}</span>
-                {insight ? <span className="card-tag">{copy.insightTag}</span> : null}
-              </div>
+            <div key={i} className="card">
+              <span className="card-num">{i + 1}</span>
               <p className={`card-text ${item ? "" : "card-empty"}`}>
                 {item?.summary ?? copy.waiting}
               </p>
@@ -109,13 +103,5 @@ function ProCon({ kind, item }: { kind: "pro" | "con"; item: ConcernItem | null 
         <p className={`pc-text ${item ? "" : "card-empty"}`}>{item?.summary ?? copy.waiting}</p>
       </div>
     </div>
-  );
-}
-
-function Spark() {
-  return (
-    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden>
-      <path d="M8 0l1.8 6.2L16 8l-6.2 1.8L8 16l-1.8-6.2L0 8l6.2-1.8z" fill="currentColor" />
-    </svg>
   );
 }

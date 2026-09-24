@@ -52,12 +52,12 @@ export const CON_CATEGORIES = [
 
 /**
  * Character ranges, measured by rendering real text in each card at its final
- * size (2 lines, no overflow). `target` is what the prompt asks for; `accept`
- * is what validation lets through — still exactly 2 lines, just less full.
+ * size (reason cards: 1 line, pros/cons: 2 lines, no overflow). `target` is what the prompt asks for; `accept`
+ * is what validation lets through — still fits, just less full.
  */
 export const TEXT_LIMITS = {
-  // Poppins 500 16px, 541px wide: always 2 lines from 79 to 119 characters.
-  reason: { target: [95, 110], accept: [80, 118] },
+  // One line, Poppins 500 18px, 499px wide: always fits up to 50 characters.
+  reason: { target: [40, 48], accept: [25, 52] },
   // Poppins 400 14px, 372px wide: always 2 lines from 65 to 98 characters.
   procon: { target: [80, 92], accept: [66, 97] },
   /** The AI's own label for its free "insight" card. */

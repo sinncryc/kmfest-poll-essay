@@ -39,6 +39,8 @@ export type DisplayState = {
   concerns: ConcernItem[];
   concernsUpdatedAt: string | null;
   totalResponses: number;
+  /** Seconds for one lap of the answer pills, set from /admin. */
+  loopSeconds: number;
   /** true when Supabase env vars are missing and the in-memory demo store is used. */
   demoMode: boolean;
 };

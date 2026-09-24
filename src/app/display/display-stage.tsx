@@ -15,7 +15,7 @@ const STRIP_H = 538;
  * measured text limits hold at any resolution.
  */
 export default function DisplayStage() {
-  const { pool, poll, concerns, connection, demoMode } = useDisplayData();
+  const { pool, poll, concerns, loopSeconds, connection, demoMode } = useDisplayData();
 
   const [scale, setScale] = useState(1);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -58,7 +58,7 @@ export default function DisplayStage() {
     <main className="strip-viewport">
       <div className="strip" style={{ "--strip-scale": scale } as React.CSSProperties}>
         <SummaryBoxes poll={poll} concerns={concerns} />
-        <OrbitRing pool={pool} />
+        <OrbitRing pool={pool} loopSeconds={loopSeconds} />
       </div>
 
       {showDebug ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { eventConfig } from "@/lib/event-config";
 import { getBrowserClient, supabaseEnabled } from "@/lib/supabase-browser";
 import type { ConcernItem, DisplayState, PollChoice, PollResults } from "@/lib/types";
 
@@ -34,6 +35,7 @@ export function useDisplayData() {
   const [concerns, setConcerns] = useState<ConcernItem[]>([]);
   const [concernsUpdatedAt, setConcernsUpdatedAt] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [loopSeconds, setLoopSeconds] = useState<number>(eventConfig.display.pillSpeed.default);
   const [connection, setConnection] = useState<ConnectionState>(
     supabaseEnabled ? "connecting" : "polling",
   );
@@ -56,6 +58,7 @@ export function useDisplayData() {
       setConcerns(state.concerns ?? []);
       setConcernsUpdatedAt(state.concernsUpdatedAt);
       setTotal(state.totalResponses);
+      if (state.loopSeconds) setLoopSeconds(state.loopSeconds);
       setDemoMode(state.demoMode);
       // Snapshot arrives newest-first; reverse so the river ingests in order.
       ingest(
@@ -170,6 +173,7 @@ export function useDisplayData() {
     concerns,
     concernsUpdatedAt,
     total,
+    loopSeconds,
     connection,
     demoMode,
     ready,

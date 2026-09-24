@@ -15,11 +15,10 @@ import type { RiverSource } from "./use-display-data";
  * the bottom (both upright) and fades between them mid-side. The pill shape
  * never fades — only text does, also when a new answer replaces it.
  */
-const PILLS = 22;
-const LOOP_SECONDS = 45;
+const PILLS = 35;
 const BATCH_MS = 10_000;
 const SWAP_MS = 800;
-const MAX_CH = 30;
+const MAX_CH = 22;
 const FADE = 320;
 
 const PER = 6356;
@@ -27,9 +26,9 @@ const PAD = 370;
 const SIDE = 358;
 const MID_R = 2999;
 const MID_L = 6177;
-const HEAD_GAP = 20;
-const TEXT_W = Math.round(MAX_CH * 6.9);
-const PILL_LEN = HEAD_GAP + TEXT_W + 8;
+const HEAD_GAP = 16;
+const TEXT_W = Math.round(MAX_CH * 5.75);
+const PILL_LEN = HEAD_GAP + TEXT_W + 4;
 const LOOP: [number, number][] = [[30, 151], [2850, 151], [2850, 509], [30, 509], [30, 151]];
 const LOOP_D = "M 30 151 L 2850 151 L 2850 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 30 509";
 const UP_D = "M 400 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 2480 509";
@@ -79,11 +78,17 @@ function assign(slots: Slot[], pool: RiverSource[], now: number, animate: boolea
   return next;
 }
 
-export default function OrbitRing({ pool }: { pool: RiverSource[] }) {
+export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; loopSeconds: number }) {
   const [slots, setSlots] = useState<Slot[]>(() => Array(PILLS).fill(EMPTY));
   const slotsRef = useRef(slots);
   const poolRef = useRef(pool);
   const svgRef = useRef<SVGSVGElement>(null);
+  // Read by the animation loop; changing speed keeps each pill where it is.
+  const loopRef = useRef(loopSeconds);
+
+  useEffect(() => {
+    loopRef.current = loopSeconds;
+  }, [loopSeconds]);
 
   useEffect(() => {
     slotsRef.current = slots;
@@ -116,13 +121,15 @@ export default function OrbitRing({ pool }: { pool: RiverSource[] }) {
       paths: Array.from(g.querySelectorAll("textPath")),
     }));
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const start = performance.now();
+    let last = performance.now();
+    let phase = 0;
     let raf = 0;
 
     const frame = (now: number) => {
-      const t = still ? 0 : (now - start) / 1000;
+      if (!still) phase = (phase + (now - last) / 1000 / loopRef.current) % 1;
+      last = now;
       parts.forEach((p, i) => {
-        const h = ((((i / PILLS) * PER - (t / LOOP_SECONDS) * PER) % PER) + PER) % PER;
+        const h = ((((i / PILLS - phase) * PER) % PER) + PER) % PER;
         const m = (h + HEAD_GAP + TEXT_W / 2) % PER;
         const w = FADE / 2;
         const dR = m - MID_R;
@@ -147,7 +154,7 @@ export default function OrbitRing({ pool }: { pool: RiverSource[] }) {
         const [fx, fy] = at(h + 30);
         const [bx, by] = at(h - 30);
         const ang = (Math.atan2(fy - by, fx - bx) * 180) / Math.PI;
-        p.head.setAttribute("transform", `translate(${x} ${y}) rotate(${ang}) scale(0.3) translate(-62 -53)`);
+        p.head.setAttribute("transform", `translate(${x} ${y}) rotate(${ang}) scale(0.24) translate(-62 -53)`);
         // text order: up-old, up-new, down-old, down-new
         p.texts[0].style.opacity = String(up * old);
         p.texts[1].style.opacity = String(up * fresh);
@@ -178,9 +185,9 @@ export default function OrbitRing({ pool }: { pool: RiverSource[] }) {
         const prev = slot.prev || placeholder;
         return (
           <g key={i} data-pill="">
-            <path d={LOOP_D} fill="none" stroke="rgba(40,150,255,0.14)" strokeWidth={34} strokeLinecap="round" strokeDasharray={dash} />
-            <path d={LOOP_D} fill="none" stroke="rgba(127,212,255,0.35)" strokeWidth={27} strokeLinecap="round" strokeDasharray={dash} />
-            <path d={LOOP_D} fill="none" stroke="#03408a" strokeWidth={25} strokeLinecap="round" strokeDasharray={dash} />
+            <path d={LOOP_D} fill="none" stroke="rgba(40,150,255,0.14)" strokeWidth={26} strokeLinecap="round" strokeDasharray={dash} />
+            <path d={LOOP_D} fill="none" stroke="rgba(127,212,255,0.35)" strokeWidth={21} strokeLinecap="round" strokeDasharray={dash} />
+            <path d={LOOP_D} fill="none" stroke="#03408a" strokeWidth={19} strokeLinecap="round" strokeDasharray={dash} />
             <image href="/brand/compass-head.png" width={230} height={108} />
             <text textAnchor="start" style={{ opacity: 0 }}>
               <textPath href="#orbit-lane-up">{prev}</textPath>

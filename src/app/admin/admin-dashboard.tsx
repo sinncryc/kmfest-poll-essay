@@ -13,6 +13,7 @@ type Stats = {
   poll: PollResults;
   concerns: ConcernItem[];
   lastAiUpdate: string | null;
+  loopSeconds: number;
   demoMode: boolean;
   canPublish: boolean;
 };
@@ -509,6 +510,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         ) : null}
       </Panel>
 
+      <PillSpeed current={stats?.loopSeconds} onSaved={() => void loadStats()} />
+
       {/* Danger zone — clears trial-and-error data between test runs, or
           right before the real event so the audience screen starts empty. */}
       <section className="mt-5 rounded-2xl border border-red-500/25 bg-red-500/[0.04] p-5 sm:p-6">
@@ -590,4 +593,76 @@ function Panel({
 function slotLabel(rank: number) {
   const { option, kind } = slotOf(rank);
   return `${option} · ${kind.toUpperCase()}`;
+}
+
+/**
+ * How fast the answer pills orbit on the big screen. The display picks the new
+ * value up within a few seconds, without jumping the pills.
+ */
+function PillSpeed({ current, onSaved }: { current?: number; onSaved: () => void }) {
+  const { min, max, default: fallback } = eventConfig.display.pillSpeed;
+  const [value, setValue] = useState<number | null>(null);
+  const [state, setState] = useState<"idle" | "busy" | "ok" | string>("idle");
+  const seconds = value ?? current ?? fallback;
+
+  async function save() {
+    setState("busy");
+    try {
+      const response = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loopSeconds: seconds }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        setState(payload?.error ?? "Gagal menyimpan.");
+        return;
+      }
+      setState("ok");
+      setValue(null);
+      onSaved();
+    } catch {
+      setState("Koneksi bermasalah.");
+    }
+  }
+
+  return (
+    <Panel step="⟳" title="Kecepatan putaran pill">
+      <p className="text-xs leading-relaxed text-slate-400">
+        Berapa detik untuk satu putaran penuh. Makin kecil makin cepat. Layar
+        besar ikut berubah dalam beberapa detik.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <label htmlFor="pill-speed" className="sr-only">
+          Detik per putaran
+        </label>
+        <input
+          id="pill-speed"
+          type="range"
+          min={min}
+          max={max}
+          step={5}
+          value={seconds}
+          onChange={(event) => {
+            setValue(Number(event.target.value));
+            setState("idle");
+          }}
+          className="w-64 accent-gold-400"
+        />
+        <span className="w-24 text-sm font-bold text-white">{seconds} detik</span>
+        <button
+          type="button"
+          onClick={save}
+          disabled={state === "busy" || value === null}
+          className="rounded-xl bg-gold-400 px-4 py-2.5 text-xs font-bold text-ink-900 transition hover:bg-gold-300 disabled:bg-ink-600 disabled:text-slate-500"
+        >
+          {state === "busy" ? "Menyimpan…" : "Simpan"}
+        </button>
+        {state === "ok" ? <span className="text-xs text-emerald-300">Tersimpan ✓</span> : null}
+        {state !== "idle" && state !== "busy" && state !== "ok" ? (
+          <span className="text-xs text-red-300">{state}</span>
+        ) : null}
+      </div>
+    </Panel>
+  );
 }

@@ -58,10 +58,10 @@ export const eventConfig = {
 
   /** Copy on the big screen (the AI cards themselves come from the summary). */
   display: {
+    /** Seconds per lap of the answer pills; operators change it in /admin. */
+    pillSpeed: { default: 60, min: 15, max: 300 },
     /** Shown in an orbiting pill until an answer fills it. */
     pillPlaceholder: "Scan the QR and share yours",
-    /** Small tag on the one card per option the AI writes freely. */
-    insightTag: "AI INSIGHT",
     waiting: "Waiting for answers…",
     kmfestLabel: "KM FEST",
     // Rendered as one paragraph; the A and B sentences take their option colour.

@@ -11,10 +11,10 @@ import { validateAiResult } from "../src/lib/validation";
 const r = (n: number) => "x".repeat(n);
 const option = (a: string, b: string) => ({
   top: [
-    { category: a, count: 9, text: r(90) },
-    { category: b, count: 4, text: r(90) },
+    { category: a, count: 9, text: r(45) },
+    { category: b, count: 4, text: r(45) },
   ],
-  insight: { label: "Draft, Then Discuss", count: 3, text: r(90) },
+  insight: { label: "Draft, Then Discuss", count: 3, text: r(45) },
   pro: { category: "speed & efficiency", text: r(85) }, // case is normalised
   con: { category: "Time Pressure", text: r(85) },
 });
@@ -39,11 +39,11 @@ const bad = (patch: (x: typeof good) => void) => {
 };
 assert.equal(bad((x) => (x.A.top[0].category = "Made Up")), false, "unknown category");
 assert.equal(bad((x) => (x.B.top[1].category = x.B.top[0].category)), false, "same category twice");
-assert.equal(bad((x) => (x.A.top[0].text = r(120))), false, "too long for card");
+assert.equal(bad((x) => (x.A.top[0].text = r(60))), false, "too long for card");
 assert.equal(bad((x) => (x.B.pro.text = r(40))), false, "too short, leaves card half empty");
 assert.equal(bad((x) => (x.A.insight.label = r(40))), false, "insight label too long");
 assert.equal(bad((x) => delete (x as Partial<typeof good>).B), false, "missing option");
 
-assert.ok(AI_PROMPT.includes("Don't Reinvent the Wheel") && AI_PROMPT.includes("95–110"));
+assert.ok(AI_PROMPT.includes("Don't Reinvent the Wheel") && AI_PROMPT.includes("40–48"));
 assert.ok(JSON.stringify(AI_RESPONSE_SCHEMA).includes("Over-Reliance on AI"));
 console.log("summary checks passed");
