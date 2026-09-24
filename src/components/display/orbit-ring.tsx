@@ -18,7 +18,6 @@ import type { RiverSource } from "./use-display-data";
 const PILLS = 35;
 const BATCH_MS = 10_000;
 const SWAP_MS = 800;
-const MAX_CH = 22;
 const FADE = 320;
 
 const PER = 6356;
@@ -27,15 +26,34 @@ const SIDE = 358;
 const MID_R = 2999;
 const MID_L = 6177;
 const HEAD_GAP = 16;
-const TEXT_W = Math.round(MAX_CH * 5.75);
+/** Room for text inside a pill, px. Text is measured and cut to fit it. */
+const TEXT_W = 126;
 const PILL_LEN = HEAD_GAP + TEXT_W + 4;
 const LOOP: [number, number][] = [[30, 151], [2850, 151], [2850, 509], [30, 509], [30, 151]];
 const LOOP_D = "M 30 151 L 2850 151 L 2850 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 30 509";
 const UP_D = "M 400 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 2480 509";
 const DOWN_D = "M 400 151 L 30 151 L 30 509 L 2850 509 L 2850 151 L 2480 151";
 
-const fit = (t: string) =>
-  t.length > MAX_CH ? t.slice(0, MAX_CH - 3).trimEnd() + "..." : t;
+/**
+ * Cuts text to the real rendered width of the pill (not a character count —
+ * "WWW" and "iii" differ 3×), adding "..." when it has to.
+ */
+let measure: CanvasRenderingContext2D | null = null;
+function fit(text: string): string {
+  measure ??= document.createElement("canvas").getContext("2d");
+  if (!measure) return text;
+  measure.font = '10px Poppins, "Segoe UI", sans-serif';
+  const width = (t: string) => measure!.measureText(t).width;
+  if (width(text) <= TEXT_W) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (width(text.slice(0, mid).trimEnd() + "...") <= TEXT_W) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo).trimEnd() + "...";
+}
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
 
 function at(s: number): [number, number] {
@@ -70,7 +88,7 @@ function assign(slots: Slot[], pool: RiverSource[], now: number, animate: boolea
     for (let i = 1; i < PILLS; i += 1) if (next[i].id < next[target].id) target = i;
     next[target] = {
       id: item.id,
-      text: fit(item.text),
+      text: item.text,
       prev: next[target].text,
       swapAt: animate ? now : -Infinity,
     };
@@ -80,6 +98,12 @@ function assign(slots: Slot[], pool: RiverSource[], now: number, animate: boolea
 
 export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; loopSeconds: number }) {
   const [slots, setSlots] = useState<Slot[]>(() => Array(PILLS).fill(EMPTY));
+  // Text is fitted with the real font, so draw it only once Poppins is in.
+  const [fontsReady, setFontsReady] = useState(false);
+
+  useEffect(() => {
+    void document.fonts.ready.then(() => setFontsReady(true));
+  }, []);
   const slotsRef = useRef(slots);
   const poolRef = useRef(pool);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -145,9 +169,12 @@ export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; 
         const fresh = swapping ? clamp((since - SWAP_MS / 2) / (SWAP_MS / 2)) : 1;
         const old = swapping ? clamp(1 - since / (SWAP_MS / 2)) : 0;
 
+        // Text always reads from the pill's left end: after the head on the
+        // top lane, from the tail on the bottom lane (head is on the right).
         const ts = h + HEAD_GAP;
+        const te = ts + TEXT_W;
         const off1 = String((ts > 4700 ? ts - PER : ts) + SIDE + PAD);
-        const off2 = String(PER - (ts < 1500 ? ts + PER : ts) + PAD);
+        const off2 = String(PER - (te < 1500 ? te + PER : te) + PAD);
 
         for (const shape of p.shapes) shape.style.strokeDashoffset = `${-h}px`;
         const [x, y] = at(h);
@@ -181,8 +208,8 @@ export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; 
         <path id="orbit-lane-down" d={DOWN_D} />
       </defs>
       {slots.map((slot, i) => {
-        const text = slot.text || placeholder;
-        const prev = slot.prev || placeholder;
+        const text = fontsReady ? fit(slot.text || placeholder) : "";
+        const prev = fontsReady ? fit(slot.prev || placeholder) : "";
         return (
           <g key={i} data-pill="">
             <path d={LOOP_D} fill="none" stroke="rgba(40,150,255,0.14)" strokeWidth={26} strokeLinecap="round" strokeDasharray={dash} />
@@ -195,10 +222,10 @@ export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; 
             <text textAnchor="start" style={{ opacity: 0 }}>
               <textPath href="#orbit-lane-up">{text}</textPath>
             </text>
-            <text textAnchor="end" style={{ opacity: 0 }}>
+            <text textAnchor="start" style={{ opacity: 0 }}>
               <textPath href="#orbit-lane-down">{prev}</textPath>
             </text>
-            <text textAnchor="end" style={{ opacity: 0 }}>
+            <text textAnchor="start" style={{ opacity: 0 }}>
               <textPath href="#orbit-lane-down">{text}</textPath>
             </text>
           </g>

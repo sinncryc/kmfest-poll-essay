@@ -30,7 +30,7 @@ export const AI_PROMPT = `You are an Employee Voice analyst at ASTRA KM FEST 202
 
 ${SCENARIO}
 
-Below is a JSON array of anonymous answers. Each has "poll_choice" ("A" or "B") and "text" (their reasoning).
+Below is a JSON array of anonymous answers. Each has "poll_choice" ("A" or "B") and "text" (their reasoning). Answers may be in Indonesian, English, or a mix of both (including casual Indonesian and slang) — read and classify all of them equally, but ALWAYS write your output in English.
 
 TASK — do this separately for option A and option B:
 
@@ -142,7 +142,8 @@ Please:
 2. Propose 6 pro and 6 con categories: 2–4 words, Title Case, max 26 characters.
 3. For each category, give 2 example answers that belong to it, and state its character count.
 4. Point out any current category that overlaps with another, is too vague, or will rarely be used — and what to replace it with.
-5. If sample answers are attached below, classify them with your proposed lists and report how many fall into each category and how many fit none.
+5. Sample answers may be in Indonesian, English, or a mix — treat them equally, but write every category in English.
+6. If sample answers are attached below, classify them with your proposed lists and report how many fall into each category and how many fit none.
 
 Sample answers (may be empty):
 `;
