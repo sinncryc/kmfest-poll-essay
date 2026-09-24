@@ -57,7 +57,8 @@ function toRows(raw: Obj): unknown[] | null {
     const insight = isObj(o.insight) ? o.insight : {};
     top.slice(0, 2).forEach((t, i) => {
       const item = isObj(t) ? t : {};
-      rows.push({ rank: base[option] + i + 1, title: item.category, count: item.count, summary: item.text });
+      // Cards 1–2 show the category sentence itself; the AI writes no text.
+      rows.push({ rank: base[option] + i + 1, title: item.category, count: item.count, summary: item.category });
     });
     rows.push({ rank: base[option] + 3, title: insight.label, count: insight.count, summary: insight.text });
     for (const [key, offset] of [["pro", 0], ["con", 1]] as const) {

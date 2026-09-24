@@ -34,14 +34,13 @@ Below is a JSON array of anonymous answers. Each has "poll_choice" ("A" or "B") 
 
 TASK — do this separately for option A and option B:
 
-1. "top": classify every answer of that option into EXACTLY ONE category from its fixed list, count them, and return the 2 categories with the highest count (ties: keep list order). Copy category names character-for-character. Never invent, rename or merge categories.
+1. "top": classify every answer of that option into EXACTLY ONE category from its fixed list, count them, and return the 2 categories with the highest count (ties: keep list order). Each category is a short sentence that is shown on screen exactly as written — copy it character-for-character. Never invent, rename, shorten or merge categories, and do not write any extra text for them.
    Option A reason categories:
 ${list(REASON_CATEGORIES.A)}
    Option B reason categories:
 ${list(REASON_CATEGORIES.B)}
-   "text": one short sentence that sums up what those answers actually say, ${rMin}–${rMax} characters (it is shown on ONE line, no title).
 
-2. "insight": ONE fresh insight you synthesize yourself from that option's answers — something real and specific that the two "top" categories do not already cover (a surprising angle, a shared condition, a recurring nuance). Give it your own short "label" (${lMin}–${lMax} characters, Title Case, not one of the category names; used only for the operator) and a one-line "text" of ${rMin}–${rMax} characters. "count" = how many answers support it.
+2. "insight": ONE fresh insight you synthesize yourself from that option's answers — something real and specific that the two "top" categories do not already say (a surprising angle, a shared condition, a recurring nuance). "text" is ONE short sentence of ${rMin}–${rMax} characters, in the same style as the category sentences above (it sits next to them on one line and must not be longer than ${rMax} characters). Also give a short "label" (${lMin}–${lMax} characters, Title Case; only the operator sees it) and "count" = how many answers support it.
 
 3. "pro" and "con": the strongest advantage and the strongest risk of that option, drawn from ALL answers (people who chose the other option often name the risks). Pick "category" from these fixed lists and write "text" as one full sentence of ${pMin}–${pMax} characters.
    Pro categories:
@@ -49,7 +48,7 @@ ${list(PRO_CATEGORIES)}
    Con categories:
 ${list(CON_CATEGORIES)}
 
-If an option has no answers yet, still fill every field: use the first categories in its lists with count 0 and write a neutral sentence about that category.
+If an option has no answers yet, still fill every field: use the first categories in its lists with count 0, and write a neutral insight and pro/con.
 
 WRITING RULES: simple English a beginner can read, neutral and constructive, no names, no quotes, no emoji. Count characters carefully — text that is too short or too long does not fit its card on screen and will be rejected.
 
@@ -57,8 +56,8 @@ Reply with ONLY valid JSON, no explanation, in exactly this shape:
 {
   "A": {
     "top": [
-      { "category": "...", "count": 0, "text": "..." },
-      { "category": "...", "count": 0, "text": "..." }
+      { "category": "...", "count": 0 },
+      { "category": "...", "count": 0 }
     ],
     "insight": { "label": "...", "count": 0, "text": "..." },
     "pro": { "category": "...", "text": "..." },
@@ -95,8 +94,8 @@ function optionSchema(reasons: readonly string[]) {
         maxItems: 2,
         items: {
           type: "OBJECT",
-          properties: { category: { type: "STRING", enum: [...reasons] }, count, text },
-          required: ["category", "count", "text"],
+          properties: { category: { type: "STRING", enum: [...reasons] }, count },
+          required: ["category", "count"],
         },
       },
       insight: {
@@ -126,23 +125,24 @@ export const CATEGORY_PROMPT = `You are helping design the fixed category lists 
 
 ${SCENARIO}
 
-The big screen shows, for each option, 2 "reason" cards (the 2 most common categories) plus one pro and one con. An AI re-classifies all answers every 5 minutes, so categories must be STABLE, clearly different from each other, and cover almost every realistic answer.
+The big screen shows, for each option, 3 one-line cards: cards 1 and 2 are the 2 most common reason categories, shown VERBATIM as sentences; card 3 is a free AI insight. The right side shows one pro and one con per option. An AI re-classifies all answers every 5 minutes, so categories must be STABLE, clearly different from each other, and cover almost every realistic answer.
 
 Current lists:
-Option A reason categories:
+Option A reason categories (each is the sentence shown on screen):
 ${list(REASON_CATEGORIES.A)}
-Option B reason categories:
+Option B reason categories (each is the sentence shown on screen):
 ${list(REASON_CATEGORIES.B)}
-Pro categories (used for both options):
+Pro categories (used for both options, shown as a small label):
 ${list(PRO_CATEGORIES)}
-Con categories (used for both options):
+Con categories (used for both options, shown as a small label):
 ${list(CON_CATEGORIES)}
 
 Please:
-1. Propose 5 reason categories for option A and 5 for option B, and 6 pro + 6 con categories. Each name 2–4 words, Title Case, max 26 characters, plain English.
-2. For each category, give a one-line definition and 2 example answers that belong to it.
-3. Point out any current category that overlaps with another, is too vague, or will rarely be used — and what to replace it with.
-4. If sample answers are attached below, classify them with your proposed lists and report how many fall into each category and how many fit none.
+1. Propose 5 reason categories for option A and 5 for option B. Each must be ONE short, simple English sentence of ${rMin}–${rMax} characters (hard maximum ${TEXT_LIMITS.reason.accept[1]}, count spaces), written as a reason a participant would give, ending with a period.
+2. Propose 6 pro and 6 con categories: 2–4 words, Title Case, max 26 characters.
+3. For each category, give 2 example answers that belong to it, and state its character count.
+4. Point out any current category that overlaps with another, is too vague, or will rarely be used — and what to replace it with.
+5. If sample answers are attached below, classify them with your proposed lists and report how many fall into each category and how many fit none.
 
 Sample answers (may be empty):
 `;

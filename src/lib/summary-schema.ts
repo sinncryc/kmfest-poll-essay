@@ -12,21 +12,26 @@ import type { ConcernItem, PollChoice } from "./types";
  * the model writes from scratch, so the screen is not only stock phrases.
  */
 
-/** Left boxes: why people picked each option. Two cards come from here. */
+/**
+ * Left boxes: why people picked each option. Each category IS the sentence
+ * shown on cards 1 and 2 (verbatim, one line), so every entry must stay within
+ * TEXT_LIMITS.reason.accept — scripts/check-summary.ts fails if one doesn't.
+ * Card 3 is the AI's own one-line synthesis.
+ */
 export const REASON_CATEGORIES: Record<PollChoice, readonly string[]> = {
   A: [
-    "Speed & Deadline",
-    "More Time to Polish",
-    "Strong Starting Point",
-    "Check & Improve",
-    "Don't Reinvent the Wheel",
+    "AI saves hours for research and polishing.",
+    "The deadline is tight, so speed comes first.",
+    "AI gives a strong draft to start from.",
+    "I can still check and improve AI's work.",
+    "Why reinvent the wheel when AI can help?",
   ],
   B: [
-    "Own Idea First",
-    "Avoid AI Anchoring",
-    "Understand the Client",
-    "Ownership & Leadership",
-    "Learn from Last Time",
+    "My own idea should lead, not AI's framing.",
+    "Seeing AI first can box in my thinking.",
+    "I need to know what the client values first.",
+    "A leader should own the idea and direction.",
+    "Last time failed, so I need a clearer angle.",
   ],
 };
 
