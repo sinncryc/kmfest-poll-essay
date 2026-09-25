@@ -958,26 +958,7 @@ body {
 /* Reduced motion                                                      */
 /* ------------------------------------------------------------------ */
 
-/* Compass tail: sways round its root (92,53 in compass-head.png units). */
-.orbit-tail {
-  animation: tail-sway 1.4s ease-in-out infinite;
-}
-
-@keyframes tail-sway {
-  0%,
-  100% {
-    transform: translate(92px, 53px) rotate(-7deg) scaleX(0.95) translate(-92px, -53px);
-  }
-  50% {
-    transform: translate(92px, 53px) rotate(6deg) scaleX(1.06) translate(-92px, -53px);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .orbit-tail {
-    animation: none;
-  }
-
   .constellation-field,
   .live-dot,
   .fade-up,

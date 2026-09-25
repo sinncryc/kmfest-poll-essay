@@ -29,8 +29,6 @@ const HEAD_GAP = 16;
 /** Room for text inside a pill, px. Text is measured and cut to fit it. */
 const TEXT_W = 126;
 const PILL_LEN = HEAD_GAP + TEXT_W + 4;
-/** x in compass-head.png where the ring ends and the tail starts (pivot: globals.css .orbit-tail). */
-const TAIL_X = 92;
 const LOOP: [number, number][] = [[30, 151], [2850, 151], [2850, 509], [30, 509], [30, 151]];
 const LOOP_D = "M 30 151 L 2850 151 L 2850 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 30 509";
 const UP_D = "M 400 509 L 30 509 L 30 151 L 2850 151 L 2850 509 L 2480 509";
@@ -142,7 +140,7 @@ export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; 
     if (!svg) return;
     const parts = Array.from(svg.querySelectorAll<SVGGElement>("g[data-pill]")).map((g) => ({
       shapes: Array.from(g.querySelectorAll<SVGPathElement>("path")),
-      head: g.querySelector<SVGGElement>("g.head")!,
+      head: g.querySelector("image")!,
       texts: Array.from(g.querySelectorAll<SVGTextElement>("text")),
       paths: Array.from(g.querySelectorAll("textPath")),
     }));
@@ -208,9 +206,6 @@ export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; 
       <defs>
         <path id="orbit-lane-up" d={UP_D} />
         <path id="orbit-lane-down" d={DOWN_D} />
-        {/* Head art split at the compass ring: the core stays put, the tail sways. */}
-        <clipPath id="orbit-head-core"><rect width={TAIL_X} height={108} /></clipPath>
-        <clipPath id="orbit-head-tail"><rect x={TAIL_X} width={230 - TAIL_X} height={108} /></clipPath>
       </defs>
       {slots.map((slot, i) => {
         const text = fontsReady ? fit(slot.text || placeholder) : "";
@@ -220,12 +215,7 @@ export default function OrbitRing({ pool, loopSeconds }: { pool: RiverSource[]; 
             <path d={LOOP_D} fill="none" stroke="rgba(40,150,255,0.14)" strokeWidth={26} strokeLinecap="round" strokeDasharray={dash} />
             <path d={LOOP_D} fill="none" stroke="rgba(127,212,255,0.35)" strokeWidth={21} strokeLinecap="round" strokeDasharray={dash} />
             <path d={LOOP_D} fill="none" stroke="#03408a" strokeWidth={19} strokeLinecap="round" strokeDasharray={dash} />
-            <g className="head">
-              <image href="/brand/compass-head.png" width={230} height={108} clipPath="url(#orbit-head-core)" />
-              <g className="orbit-tail" style={{ animationDelay: `${-i * 0.37}s` }}>
-                <image href="/brand/compass-head.png" width={230} height={108} clipPath="url(#orbit-head-tail)" />
-              </g>
-            </g>
+            <image href="/brand/compass-head.png" width={230} height={108} />
             <text textAnchor="start" style={{ opacity: 0 }}>
               <textPath href="#orbit-lane-up">{prev}</textPath>
             </text>
